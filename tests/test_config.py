@@ -6,7 +6,7 @@ from pydantic import ValidationError
 os.environ["LLM_MODEL_NAME"] = "test-model"
 os.environ["TEMPERATURE"] = "0.5"
 
-from core.quivr_core.config import CoreConfig
+from core.nexusmind.config import CoreConfig
 
 
 def test_default_values():
