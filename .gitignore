@@ -1,2 +1,24 @@
 # Documentation
 docs/
+
+# Environment variables
+.env
+.env.*
+
+# Poetry virtualenv
+.venv/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# IDE
+.vscode/
+.idea/
+
+# Build artifacts
+dist/
+build/
+*.egg-info/

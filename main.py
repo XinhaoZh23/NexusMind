@@ -1,7 +1,13 @@
 import uuid
 from functools import lru_cache
-from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends
+from fastapi import (
+    FastAPI, UploadFile, File, Form, HTTPException, 
+    Depends, BackgroundTasks, Security
+)
+from fastapi.responses import JSONResponse
+from fastapi.security import APIKeyHeader
 from pydantic import BaseModel, Field
+from typing import List
 
 from core.nexusmind.brain.brain import Brain
 from core.nexusmind.rag.nexus_rag import NexusRAG
@@ -10,16 +16,40 @@ from core.nexusmind.processor.registry import ProcessorRegistry
 from core.nexusmind.processor.implementations.simple_txt_processor import SimpleTxtProcessor
 from core.nexusmind.storage.local_storage import LocalStorage
 from core.nexusmind.logger import logger
+from core.nexusmind.config import CoreConfig
 import uvicorn
 
-# --- FastAPI App Initialization ---
+# --- Security and App Initialization ---
+API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=True)
+
 app = FastAPI(
     title="NEXUSMIND API",
     description="An API for interacting with the NEXUSMIND RAG system.",
     version="0.1.0",
 )
 
-# --- Dependency Injection Setup ---
+# --- Configuration and Dependency Injection ---
+@lru_cache
+def get_core_config() -> CoreConfig:
+    return CoreConfig()
+
+async def get_api_key(
+    api_key_header: str = Security(API_KEY_HEADER),
+    config: CoreConfig = Depends(get_core_config),
+):
+    """Dependency to verify the API key."""
+    if not config.api_keys:
+        logger.warning("API keys are not configured. Endpoint is unprotected.")
+        return api_key_header
+    if api_key_header not in config.api_keys:
+        raise HTTPException(
+            status_code=403, detail="Could not validate credentials"
+        )
+    return api_key_header
+
+# In-memory storage for task statuses
+TASK_STATUSES = {}
+
 @lru_cache
 def get_storage() -> LocalStorage:
     """Dependency provider for LocalStorage."""
@@ -69,46 +99,93 @@ class ChatRequest(BaseModel):
     brain_id: uuid.UUID
 
 # --- API Endpoints ---
-@app.post("/upload")
+def process_uploaded_file(
+    task_id: str,
+    brain_id: uuid.UUID,
+    file_content: bytes,
+    file_name: str,
+    storage: LocalStorage,
+    processor_registry: ProcessorRegistry,
+):
+    """
+    The background task that processes the file.
+    """
+    try:
+        TASK_STATUSES[task_id] = "PROCESSING"
+        
+        brain = get_or_create_brain(brain_id)
+
+        # 1. Save file to local storage
+        file_path = storage.save(file_content, file_name)
+        logger.info(f"File '{file_name}' uploaded to '{file_path}'.")
+
+        # 2. Create NexusFile instance
+        nexus_file = NexusFile(file_name=file_name, file_path=str(file_path))
+
+        # 3. Process the file to get chunks
+        processor = processor_registry.get_processor(nexus_file.file_name)
+        if not processor:
+            raise ValueError(f"No processor found for file type: {nexus_file.extension}")
+        
+        chunks = processor.process(nexus_file)
+
+        # 4. Add chunks to the brain's vector store
+        if brain.vector_store:
+            brain.vector_store.add_documents(chunks)
+            logger.info(f"Added {len(chunks)} chunks to brain {brain_id}'s vector store.")
+        else:
+            raise ValueError(f"Vector store not available for brain {brain_id}.")
+
+        TASK_STATUSES[task_id] = "SUCCESS"
+
+    except Exception as e:
+        logger.error(f"Task {task_id} failed: {e}")
+        TASK_STATUSES[task_id] = "FAILURE"
+
+@app.post("/upload", dependencies=[Depends(get_api_key)])
 async def upload_file(
-    brain_id: uuid.UUID = Form(...), 
+    background_tasks: BackgroundTasks,
+    brain_id: uuid.UUID = Form(...),
     file: UploadFile = File(...),
     storage: LocalStorage = Depends(get_storage),
     processor_registry: ProcessorRegistry = Depends(get_processor_registry)
 ):
     """
-    Uploads a file, processes it, and adds it to the specified brain's knowledge base.
+    Uploads a file, processes it in the background, and returns a task ID.
     """
-    brain = get_or_create_brain(brain_id)
-
-    # 1. Save file to local storage
-    content = await file.read()
-    file_path = storage.save(content, file.filename)
-    logger.info(f"File '{file.filename}' uploaded to '{file_path}'.")
-
-    # 2. Create NexusFile instance
-    nexus_file = NexusFile(file_name=file.filename, file_path=str(file_path))
-
-    # 3. Process the file to get chunks
-    processor = processor_registry.get_processor(nexus_file.file_name)
-    if not processor:
-        # This part should now be unreachable if the registry is configured correctly
-        raise HTTPException(status_code=400, detail=f"No processor found for file type: {nexus_file.extension}")
+    task_id = str(uuid.uuid4())
+    TASK_STATUSES[task_id] = "PENDING"
     
-    chunks = processor.process(nexus_file)
+    # Read file content in the endpoint
+    content = await file.read()
 
-    # 4. Add chunks to the brain's vector store
-    if brain.vector_store:
-        brain.vector_store.add_documents(chunks)
-        logger.info(f"Added {len(chunks)} chunks to brain {brain_id}'s vector store.")
-    else:
-        logger.error(f"Vector store not available for brain {brain_id}.")
-        raise HTTPException(status_code=500, detail="Vector store not initialized.")
+    # Add the processing to background tasks
+    background_tasks.add_task(
+        process_uploaded_file,
+        task_id,
+        brain_id,
+        content,
+        file.filename,
+        storage,
+        processor_registry
+    )
 
-    return {"message": f"File '{file.filename}' uploaded and processed successfully."}
+    return JSONResponse(
+        status_code=202, 
+        content={"task_id": task_id, "message": "File upload accepted and is being processed."}
+    )
 
+@app.get("/upload/status/{task_id}")
+async def get_upload_status(task_id: str):
+    """
+    Retrieves the status of a background upload task.
+    """
+    status = TASK_STATUSES.get(task_id)
+    if status is None:
+        raise HTTPException(status_code=404, detail="Task not found")
+    return {"task_id": task_id, "status": status}
 
-@app.post("/chat")
+@app.post("/chat", dependencies=[Depends(get_api_key)])
 async def chat_with_brain(request: ChatRequest):
     """
     Handles a chat request by generating an answer from the specified brain.
@@ -125,7 +202,6 @@ async def chat_with_brain(request: ChatRequest):
     answer = rag.generate_answer(request.question)
     
     return {"answer": answer}
-
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000) 
