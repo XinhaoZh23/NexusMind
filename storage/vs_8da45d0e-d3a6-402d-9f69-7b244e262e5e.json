@@ -1,0 +1,11 @@
+[
+    {
+        "chunk_id": "82b135a0-012f-46fa-a2de-82859ffa99fb",
+        "document_id": "ca446b3f-8428-4914-b32b-21af65b0e789",
+        "content": "The sky is blue and the grass is green.",
+        "metadata": {
+            "file_name": "test_doc.txt",
+            "line_number": 1
+        }
+    }
+]

@@ -1,0 +1,8 @@
+{
+    "brain_id": "47b4260e-f03a-48c0-9c5c-81e049957cf6",
+    "name": "Brain 47b4260e-f03a-48c0-9c5c-81e049957cf6",
+    "history": [],
+    "llm_model_name": "gpt-4o",
+    "temperature": 0.0,
+    "max_tokens": 256
+}

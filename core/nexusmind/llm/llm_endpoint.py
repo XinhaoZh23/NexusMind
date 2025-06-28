@@ -1,6 +1,5 @@
 from typing import List
 import litellm
-from core.nexusmind.config import CoreConfig
 
 
 class LLMEndpoint:
@@ -9,8 +8,10 @@ class LLMEndpoint:
     using the litellm library.
     """
 
-    def __init__(self, config: CoreConfig):
-        self.config = config
+    def __init__(self, model_name: str, temperature: float, max_tokens: int):
+        self.model_name = model_name
+        self.temperature = temperature
+        self.max_tokens = max_tokens
         # litellm can automatically handle API keys from environment variables,
         # so we don't necessarily need to pass them explicitly.
 
@@ -25,10 +26,10 @@ class LLMEndpoint:
         :return: The string content of the model's response.
         """
         params = {
-            "model": self.config.llm_model_name,
+            "model": self.model_name,
             "messages": messages,
-            "temperature": self.config.temperature,
-            "max_tokens": self.config.max_tokens,
+            "temperature": self.temperature,
+            "max_tokens": self.max_tokens,
         }
         if optional_params:
             params.update(optional_params)

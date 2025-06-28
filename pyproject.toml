@@ -1,0 +1,21 @@
+[project]
+name = "nexusmind"
+version = "0.1.0"
+description = "NEXUSMIND - A RAG system development project."
+requires-python = ">=3.9"
+dependencies = [
+    "pydantic",
+    "pytest",
+    "litellm",
+    "faiss-cpu",
+    "numpy",
+    "loguru",
+    "fastapi",
+    "uvicorn[standard]",
+    "python-multipart",
+]
+
+[tool.pytest.ini_options]
+pythonpath = [
+  "."
+]

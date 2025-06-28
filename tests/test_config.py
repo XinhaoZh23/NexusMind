@@ -63,7 +63,7 @@ def test_init_without_override():
 
     try:
         config = CoreConfig()
-        assert config.llm_model_name == "gpt-4"
+        assert config.llm_model_name == "gpt-4o"
         assert config.temperature == 0.0
         assert config.max_tokens == 1000
     finally:

@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 from core.nexusmind.storage.storage_base import StorageBase
+from typing import Optional
+import uuid
 
 
 class LocalStorage(StorageBase):
@@ -13,18 +15,22 @@ class LocalStorage(StorageBase):
         self.base_path = Path(base_path)
         self.base_path.mkdir(parents=True, exist_ok=True)
 
-    def _get_full_path(self, file_path: str) -> Path:
+    def _get_full_path(self, filename: str) -> Path:
         """Helper to get the full path safely."""
-        return self.base_path / file_path
+        return self.base_path / filename
 
-    def save(self, file_path: str, content: bytes) -> None:
-        """
-        Save content to a local file.
-        """
+    def save(self, file_content: bytes, file_path: Optional[str] = None) -> str:
+        """Saves content to a file."""
+        if file_path is None:
+            file_path = str(uuid.uuid4())
+
         full_path = self._get_full_path(file_path)
         full_path.parent.mkdir(parents=True, exist_ok=True)
+        
         with open(full_path, "wb") as f:
-            f.write(content)
+            f.write(file_content)
+
+        return file_path
 
     def get(self, file_path: str) -> bytes:
         """

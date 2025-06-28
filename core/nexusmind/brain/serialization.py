@@ -17,11 +17,17 @@ def get_brain_path(brain_id: uuid.UUID) -> Path:
 def save_brain(brain: Brain):
     """
     Saves the brain's state to a JSON file.
+    Also saves the vector store if it exists.
     """
+    # Save the main brain configuration
     path = get_brain_path(brain.brain_id)
     with open(path, "w") as f:
         # Pydantic's model_dump_json is perfect for this
         f.write(brain.model_dump_json(indent=4))
+
+    # Save the vector store
+    if brain.vector_store:
+        brain.vector_store.save_to_disk()
 
 
 def load_brain(brain_id: uuid.UUID) -> Brain:
