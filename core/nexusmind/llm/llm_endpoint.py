@@ -53,7 +53,7 @@ class LLMEndpoint:
         """
         try:
             response = litellm.embedding(model="text-embedding-ada-002", input=[text])
-            return response.data[0].embedding
+            return response["data"][0]["embedding"]
         except Exception as e:
             print(f"An error occurred while getting embeddings: {e}")
             return [] 
