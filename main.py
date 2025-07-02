@@ -2,12 +2,13 @@ import uuid
 from functools import lru_cache
 from fastapi import (
     FastAPI, UploadFile, File, Form, HTTPException, 
-    Depends, BackgroundTasks, Security
+    Depends, Security
 )
 from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
-from pydantic import BaseModel, Field
-from typing import List
+from pydantic import BaseModel
+from typing import Dict
+from sqlalchemy.orm import Session
 
 from core.nexusmind.brain.brain import Brain
 from core.nexusmind.rag.nexus_rag import NexusRAG
@@ -15,8 +16,15 @@ from core.nexusmind.files.file import NexusFile
 from core.nexusmind.processor.registry import ProcessorRegistry
 from core.nexusmind.processor.implementations.simple_txt_processor import SimpleTxtProcessor
 from core.nexusmind.storage.local_storage import LocalStorage
+from core.nexusmind.storage.s3_storage import S3Storage
+from core.nexusmind.database import get_session, create_db_and_tables
+from core.nexusmind.models.files import File as FileModel, FileStatusEnum
 from core.nexusmind.logger import logger
 from core.nexusmind.config import CoreConfig
+from core.nexusmind.tasks import process_file
+from core.nexusmind.celery_app import app as celery_app
+from celery.result import AsyncResult
+
 import uvicorn
 
 # --- Security and App Initialization ---
@@ -27,6 +35,14 @@ app = FastAPI(
     description="An API for interacting with the NEXUSMIND RAG system.",
     version="0.1.0",
 )
+
+@app.on_event("startup")
+def on_startup():
+    # Create database tables if they don't exist
+    create_db_and_tables()
+    # Ensure the S3 bucket exists
+    s3_storage = get_s3_storage()
+    s3_storage.create_bucket_if_not_exists()
 
 # --- Configuration and Dependency Injection ---
 @lru_cache
@@ -51,18 +67,17 @@ async def get_api_key(
 TASK_STATUSES = {}
 
 @lru_cache
-def get_storage() -> LocalStorage:
-    """Dependency provider for LocalStorage."""
-    return LocalStorage()
+def get_s3_storage() -> S3Storage:
+    """Dependency provider for S3Storage."""
+    return S3Storage()
 
 @lru_cache
-def get_processor_registry() -> ProcessorRegistry:
+def get_processor_registry(storage: S3Storage = Depends(get_s3_storage)) -> ProcessorRegistry:
     """
     Dependency provider for the ProcessorRegistry.
     It creates and configures a singleton instance of the registry.
     """
     logger.info("Creating and configuring processor registry singleton...")
-    storage = get_storage()
     registry = ProcessorRegistry()
     simple_txt_processor = SimpleTxtProcessor(storage=storage)
     registry.register_processor(".txt", simple_txt_processor)
@@ -98,92 +113,77 @@ class ChatRequest(BaseModel):
     question: str
     brain_id: uuid.UUID
 
+class UploadResponse(BaseModel):
+    task_id: str
+    message: str
+
+class StatusResponse(BaseModel):
+    task_id: str
+    status: str
+    result: Dict | str | None
+
 # --- API Endpoints ---
-def process_uploaded_file(
-    task_id: str,
-    brain_id: uuid.UUID,
-    file_content: bytes,
-    file_name: str,
-    storage: LocalStorage,
-    processor_registry: ProcessorRegistry,
-):
-    """
-    The background task that processes the file.
-    """
-    try:
-        TASK_STATUSES[task_id] = "PROCESSING"
-        
-        brain = get_or_create_brain(brain_id)
-
-        # 1. Save file to local storage
-        file_path = storage.save(file_content, file_name)
-        logger.info(f"File '{file_name}' uploaded to '{file_path}'.")
-
-        # 2. Create NexusFile instance
-        nexus_file = NexusFile(file_name=file_name, file_path=str(file_path))
-
-        # 3. Process the file to get chunks
-        processor = processor_registry.get_processor(nexus_file.file_name)
-        if not processor:
-            raise ValueError(f"No processor found for file type: {nexus_file.extension}")
-        
-        chunks = processor.process(nexus_file)
-
-        # 4. Add chunks to the brain's vector store
-        if brain.vector_store:
-            brain.vector_store.add_documents(chunks)
-            logger.info(f"Added {len(chunks)} chunks to brain {brain_id}'s vector store.")
-        else:
-            raise ValueError(f"Vector store not available for brain {brain_id}.")
-
-        TASK_STATUSES[task_id] = "SUCCESS"
-
-    except Exception as e:
-        logger.error(f"Task {task_id} failed: {e}")
-        TASK_STATUSES[task_id] = "FAILURE"
-
-@app.post("/upload", dependencies=[Depends(get_api_key)])
+@app.post("/upload", dependencies=[Depends(get_api_key)], response_model=UploadResponse)
 async def upload_file(
-    background_tasks: BackgroundTasks,
     brain_id: uuid.UUID = Form(...),
     file: UploadFile = File(...),
-    storage: LocalStorage = Depends(get_storage),
-    processor_registry: ProcessorRegistry = Depends(get_processor_registry)
+    storage: S3Storage = Depends(get_s3_storage),
+    session: Session = Depends(get_session),
 ):
     """
-    Uploads a file, processes it in the background, and returns a task ID.
+    Uploads a file to S3, creates a database record, and queues it for processing.
     """
-    task_id = str(uuid.uuid4())
-    TASK_STATUSES[task_id] = "PENDING"
+    try:
+        # 1. Save file to S3
+        content = await file.read()
+        s3_path = storage.save(content, file.filename)
+        logger.info(f"File '{file.filename}' uploaded to S3 at '{s3_path}'.")
+
+        # 2. Create a record in the database
+        db_file = FileModel(
+            file_name=file.filename,
+            s3_path=s3_path,
+            brain_id=brain_id,
+            status=FileStatusEnum.PENDING,
+        )
+        session.add(db_file)
+        session.commit()
+        session.refresh(db_file)
+        logger.info(f"Created file record in DB with ID: {db_file.id}")
+
+        # 3. Queue the processing task
+        task = process_file.delay(str(db_file.id))
+        
+        return UploadResponse(
+            task_id=task.id,
+            message="File upload accepted and is being processed."
+        )
+    except Exception as e:
+        logger.error(f"Failed to queue file processing for {file.filename}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to start file processing.")
+
+@app.get("/upload/status/{task_id}", response_model=StatusResponse)
+async def get_upload_status(task_id: str, session: Session = Depends(get_session)):
+    """
+    Retrieves the status of a file processing task from Celery.
+    This endpoint can also be expanded to include the database status.
+    """
+    task_result = AsyncResult(task_id, app=celery_app)
+
+    status = task_result.status
+    result = task_result.result
+
+    if task_result.failed():
+        result = str(task_result.result)
     
-    # Read file content in the endpoint
-    content = await file.read()
+    # Optional: You could also query your `FileModel` here using the task_id
+    # if you were to store it, to provide even more detailed status.
 
-    # Add the processing to background tasks
-    background_tasks.add_task(
-        process_uploaded_file,
-        task_id,
-        brain_id,
-        content,
-        file.filename,
-        storage,
-        processor_registry
+    return StatusResponse(
+        task_id=task_id,
+        status=status,
+        result=result,
     )
-
-    return JSONResponse(
-        status_code=202, 
-        content={"task_id": task_id, "message": "File upload accepted and is being processed."}
-    )
-
-@app.get("/upload/status/{task_id}")
-async def get_upload_status(task_id: str):
-    """
-    Retrieves the status of a background upload task.
-    """
-    status = TASK_STATUSES.get(task_id)
-    if status is None:
-        raise HTTPException(status_code=404, detail="Task not found")
-    return {"task_id": task_id, "status": status}
 
 @app.post("/chat", dependencies=[Depends(get_api_key)])
 async def chat_with_brain(request: ChatRequest):
