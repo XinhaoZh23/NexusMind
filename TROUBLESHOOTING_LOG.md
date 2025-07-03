@@ -234,4 +234,18 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 在 `tests/test_llm_endpoint.py` 文件顶部添加 `from unittest.mock import Mock, patch`。
 
 **反馈:**
+* **2025-07-06**: 已修复。`tests/test_llm_endpoint.py` 中的所有测试现已通过。
+
+#### **第五步：修复 `test_api.py` 中的 `TypeError`**
+
+**问题:**
+在 `tests/test_api.py` 中，端到端测试 `test_async_upload_and_chat` 因 `TypeError: unhashable type: 'CoreConfig'` 而失败。
+
+**根本原因分析:**
+这个错误是由于某个被 `@lru_cache` 装饰的函数试图缓存一个以 `CoreConfig` 对象为参数的调用而引起的。Pydantic 模型（如 `CoreConfig`）是可变对象，因此不可哈希，不能被用作缓存的键。错误发生在 FastAPI 的依赖注入过程中，说明问题出在某个作为依赖项提供给 API 路由的函数上。
+
+**解决方案:**
+找到这个被错误缓存的依赖项函数，并移除其 `@lru_cache` 装饰器。
+
+**反馈:**
 * **2025-07-06**: 待执行。

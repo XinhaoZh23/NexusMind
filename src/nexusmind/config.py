@@ -57,7 +57,6 @@ class CoreConfig(BaseConfig):
     minio: MinioConfig = MinioConfig()
 
 
-@lru_cache()
 def get_core_config() -> CoreConfig:
     """
     Get the core config, cached to avoid multiple loads.
