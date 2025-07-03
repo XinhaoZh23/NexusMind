@@ -30,7 +30,7 @@ redis_data/
 minio_data/
 
 # Local storage
-storage/
+/storage/
 brains/
 
 # Testing
