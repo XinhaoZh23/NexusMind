@@ -12,8 +12,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from core.nexusmind.celery_app import app as celery_app  # noqa: E402
 from main import app, get_core_config  # noqa: E402
 
-# Create a TestClient instance
-client = TestClient(app)
+
+@pytest.fixture
+def api_client() -> TestClient:
+    """Provides a TestClient instance for API testing."""
+    return TestClient(app)
+
 
 # --- Test Fixtures ---
 VALID_API_KEY = "test-key"
@@ -62,6 +66,7 @@ def test_async_upload_and_chat(
     test_txt_content,
     mock_embedding,
     settings,
+    api_client,
 ):
     """
     Tests the full end-to-end flow in a synchronous testing environment.
@@ -84,7 +89,7 @@ def test_async_upload_and_chat(
     # --- 1. Upload the file (should be processed synchronously) ---
     brain_id = str(uuid.uuid4())
     files = {"file": ("test_doc.txt", test_txt_content.encode("utf-8"), "text/plain")}
-    response_upload = client.post(
+    response_upload = api_client.post(
         "/upload", data={"brain_id": brain_id}, files=files, headers=headers
     )
 
@@ -95,13 +100,13 @@ def test_async_upload_and_chat(
     task_id = response_json["task_id"]
 
     # --- 2. Verify task status is SUCCESS directly ---
-    response_status = client.get(f"/upload/status/{task_id}")
+    response_status = api_client.get(f"/upload/status/{task_id}")
     assert response_status.status_code == 200
     status_json = response_status.json()
     assert status_json.get("status") == "SUCCESS"
 
     # --- 3. Chat about the file ---
-    response_chat = client.post(
+    response_chat = api_client.post(
         "/chat",
         json={"brain_id": brain_id, "question": "What color is the sky?"},
         headers=headers,
@@ -122,18 +127,18 @@ def test_async_upload_and_chat(
     assert "the grass is green" in final_prompt.lower()
 
 
-def test_chat_without_api_key(settings):
+def test_chat_without_api_key(settings, api_client):
     """Test that a request without an API key is rejected."""
-    response = client.post(
+    response = api_client.post(
         "/chat", json={"brain_id": str(uuid.uuid4()), "question": "test"}
     )
     assert response.status_code == 403
     assert "Not authenticated" in response.text
 
 
-def test_chat_with_invalid_api_key(settings):
+def test_chat_with_invalid_api_key(settings, api_client):
     """Test that a request with an invalid API key is rejected."""
-    response = client.post(
+    response = api_client.post(
         "/chat",
         json={"brain_id": str(uuid.uuid4()), "question": "test"},
         headers={"X-API-Key": "invalid-key"},

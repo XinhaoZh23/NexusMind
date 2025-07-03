@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "NEXUSMIND - A RAG system development project."
 authors = ["Your Name <you@example.com>"]
 readme = "README.md"
-packages = [{include = "nexusmind", from = "core"}]
+packages = [{include = "core"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9"
@@ -20,7 +20,7 @@ python-multipart = "^0.0.9"
 celery = {extras = ["redis"], version = "^5.5.3"}
 redis = "^5.0.4"
 sqlmodel = "^0.0.24"
-boto3 = "^1.39.1"
+boto3 = "^1.39.2"
 psycopg2-binary = "^2.9.10"
 
 [tool.poetry.dev-dependencies]
