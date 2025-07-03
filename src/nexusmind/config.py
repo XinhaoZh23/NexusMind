@@ -1,6 +1,7 @@
 import os
 from functools import lru_cache
 from pydantic_settings import SettingsConfigDict
+from pydantic import Field
 
 from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
 
@@ -16,13 +17,13 @@ class CoreConfig(BaseConfig):
     # The model name to use for language model interactions.
     # This should correspond to a model supported by litellm.
     # Example: "openai/gpt-4", "anthropic/claude-2", "google/gemini-pro"
-    llm_model_name: str = "gpt-4"
+    llm_model_name: str = Field("gpt-4o", description="Default LLM model name.")
 
     # The temperature for the language model, controlling creativity.
-    temperature: float = 0.7
+    temperature: float = Field(0.5, description="LLM temperature.")
 
     # The maximum number of tokens to generate in a response.
-    max_tokens: int = 1000
+    max_tokens: int = Field(1000, description="LLM max tokens.")
 
     # The API key for OpenAI services, loaded from OPENAI_API_KEY.
     openai_api_key: str | None = None

@@ -138,6 +138,40 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 重构 `main.py` 中的 `get_s3_storage` 函数，让它依赖于 `get_core_config` 来获取配置实例，并将其作为参数传递给 `S3Storage` 的构造函数。
 
 **反馈:**
+* **2025-07-05**: 已修复。此举暴露了更深层次的问题：`TypeError: unhashable type: 'CoreConfig'`。原因是 `@lru_cache` 无法缓存以可变对象（如 Pydantic 模型）为参数的函数。
+
+---
+
+## 2025-07-05: 修复运行时 (Runtime) 错误 (续)
+
+### **执行计划**
+
+#### **第七步：修复 `test_config.py` 中的 `AssertionError`**
+
+**问题描述:**
+`tests/test_config.py` 中的 `test_init_without_override` 测试失败，断言 `'gpt-4' == 'gpt-4o'`。
+
+**根本原因分析:**
+`src/nexusmind/base_config.py` 中 `CoreConfig` 的默认模型 `llm_model_name` 被硬编码为 "gpt-4"，而测试用例期望的默认值是 "gpt-4o"。这是代码实现与测试期望之间的直接冲突。
+
+**解决方案:**
+以测试为准，将 `src/nexusmind/config.py` 中的默认模型修改为 `gpt-4o`。
+
+**反馈:**
+* **2025-07-05**: 待执行。
+
+#### **第八步：移除不当的缓存**
+
+**问题描述:**
+`tests/test_api.py` 失败，错误为 `TypeError: unhashable type: 'CoreConfig'`。
+
+**根本原因分析:**
+`main.py` 中的 `get_s3_storage` 和 `get_processor_registry` 函数都被 `@lru_cache` 装饰，但它们的参数包含了 `CoreConfig` 或 `S3Storage` 等不可哈希的 Pydantic/类实例。FastAPI 的依赖注入系统自身已经处理了单例和依赖缓存，这里的 `@lru_cache` 是多余且有害的。
+
+**解决方案:**
+移除 `get_s3_storage` 和 `get_processor_registry` 函数前的 `@lru_cache` 装饰器。
+
+**反馈:**
 * **2025-07-05**: 待执行。
 
 ---
