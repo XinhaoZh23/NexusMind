@@ -29,7 +29,10 @@ class PostgresConfig(BaseConfig):
     db: str = "nexusmind_db"
 
     def get_db_url(self) -> str:
-        return f"postgresql://{self.user}:{self.password.get_secret_value()}@{self.host}:{self.port}/{self.db}"
+        return (
+            f"postgresql://{self.user}:{self.password.get_secret_value()}"
+            f"@{self.host}:{self.port}/{self.db}"
+        )
 
 
 class RedisConfig(BaseConfig):

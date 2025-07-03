@@ -1,13 +1,10 @@
 import json
 import logging
-import os
-import pickle
 from pathlib import Path
 from typing import List, Optional
 
 import faiss
 import numpy as np
-from pydantic import Field
 
 from ..llm.llm_endpoint import LLMEndpoint
 from ..processor.splitter import Chunk

@@ -1,7 +1,4 @@
 from uuid import UUID
-
-import pytest
-
 from nexusmind.files.file import NexusFile
 from nexusmind.processor.splitter import Chunk
 

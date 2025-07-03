@@ -1,7 +1,5 @@
-import os
-import tempfile
 import uuid
-from unittest.mock import MagicMock, Mock
+from unittest.mock import Mock
 
 import numpy as np
 import pytest

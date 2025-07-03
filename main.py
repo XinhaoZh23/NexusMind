@@ -2,7 +2,7 @@ import uuid
 from functools import lru_cache
 from typing import Dict
 
-import boto3
+# import boto3
 import uvicorn
 from celery.result import AsyncResult
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, UploadFile
@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from nexusmind.brain.brain import Brain
 from nexusmind.celery_app import app as celery_app
 from nexusmind.config import CoreConfig, get_core_config
-from nexusmind.database import create_db_and_tables, engine, get_session
+from nexusmind.database import create_db_and_tables, get_session
 from nexusmind.logger import get_logger
 from nexusmind.models.files import File as FileModel
 from nexusmind.models.files import FileStatusEnum
@@ -51,13 +51,13 @@ def on_startup():
     if config.minio.endpoint:
         client_kwargs["endpoint_url"] = config.minio.endpoint
 
-    s3_client = boto3.client("s3", **client_kwargs)
-    s3_storage = S3Storage(config=config.minio, s3_client=s3_client)
+    # s3_client = boto3.client("s3", **client_kwargs)
+    # s3_storage = S3Storage(config=config.minio, s3_client=s3_client)
 
 
 # --- Configuration and Dependency Injection ---
 @lru_cache
-def get_core_config() -> CoreConfig:
+def get_core_config() -> CoreConfig:  # noqa: F811
     return CoreConfig()
 
 

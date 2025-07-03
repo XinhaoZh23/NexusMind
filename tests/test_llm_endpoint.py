@@ -1,7 +1,6 @@
 from unittest.mock import Mock, patch
 
 import pytest
-from litellm.caching import Cache
 
 from nexusmind.config import CoreConfig
 from nexusmind.llm.llm_endpoint import LLMEndpoint

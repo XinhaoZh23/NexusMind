@@ -1,4 +1,3 @@
-import os
 import uuid
 from unittest.mock import MagicMock, patch
 
@@ -8,11 +7,9 @@ from fastapi.testclient import TestClient
 from moto import mock_aws
 
 from main import app, get_core_config
-from nexusmind.base_config import MinioConfig
 from nexusmind.celery_app import app as celery_app
 from nexusmind.processor.splitter import Chunk
 from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
-from nexusmind.storage.storage_base import StorageBase
 
 
 @pytest.fixture
@@ -103,7 +100,7 @@ def test_async_upload_and_chat(
     # --- Mock S3 and Processor dependencies for the Celery task ---
     # The api_client fixture already handles mocking for the API context.
     # This patch handles mocking for the background Celery task context.
-    s3_storage_mock = api_client.app.dependency_overrides[get_s3_storage]()
+    # s3_storage_mock = api_client.app.dependency_overrides[get_s3_storage]()
 
     # Configure the mock processor to use the same mock S3 storage
     processor_mock = MagicMock()

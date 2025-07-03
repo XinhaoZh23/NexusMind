@@ -1,11 +1,9 @@
 import os
-from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
 
-from nexusmind.base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
-from nexusmind.config import CoreConfig, get_core_config
+from nexusmind.config import CoreConfig
 
 # 在导入CoreConfig之后设置环境变量，以测试覆盖
 os.environ["LLM_MODEL_NAME"] = "test-model"
