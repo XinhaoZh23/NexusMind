@@ -1,3 +1,4 @@
+import logging
 import os
 import pickle
 import json
@@ -11,6 +12,8 @@ from pydantic import Field
 from ..llm.llm_endpoint import LLMEndpoint
 from ..processor.splitter import Chunk
 from .vector_store_base import VectorStoreBase
+
+logger = logging.getLogger(__name__)
 
 
 class FaissVectorStore(VectorStoreBase):

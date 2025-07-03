@@ -206,4 +206,18 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 检查 `src/nexusmind/brain/serialization.py` 的内容，并相应地更正 `src/nexusmind/brain/brain.py` 中的函数调用。
 
 **反馈:**
+* **2025-07-06**: 已修复。此举成功解决了 `AttributeError`，但错误链沿着调用栈深入，暴露出 `faiss_vector_store.py` 中存在 `NameError`，因其缺少 `logger` 的定义。
+
+#### **第三步：修复 `faiss_vector_store.py` 中的 `NameError`**
+
+**问题:**
+`test_save_and_load_brain` 测试因 `NameError: name 'logger' is not defined` 而失败。
+
+**根本原因分析:**
+在 `save_brain` 的执行过程中，会调用 `vector_store.save_to_disk()`。`faiss_vector_store.py` 文件中的 `save_to_disk` 方法使用了 `logger` 对象，但在文件作用域内并未定义它。
+
+**解决方案:**
+在 `src/nexusmind/storage/faiss_vector_store.py` 文件顶部添加标准的日志记录器设置 (`import logging` 和 `logger = logging.getLogger(__name__)`)。
+
+**反馈:**
 * **2025-07-06**: 待执行。
