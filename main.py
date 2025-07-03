@@ -40,9 +40,10 @@ app = FastAPI(
 def on_startup():
     # Create database tables if they don't exist
     create_db_and_tables()
-    # Ensure the S3 bucket exists
-    s3_storage = get_s3_storage()
-    s3_storage.create_bucket_if_not_exists()
+    # Ensure the S3 bucket exists by manually creating dependencies
+    config = get_core_config()
+    s3_storage = S3Storage(config.minio)
+    s3_storage._create_bucket_if_not_exists()
 
 
 # --- Configuration and Dependency Injection ---

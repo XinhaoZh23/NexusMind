@@ -253,4 +253,22 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 修改 `tests/test_api.py` 中现有的 `api_client` fixture。通过将 `TestClient` 的实例化方式从 `TestClient(app)` 改为在 `with` 语句中使用 (`with TestClient(app) as client: yield client`)，我们可以指示 `pytest` 正确地处理 FastAPI 应用的生命周期事件，从而确保 `create_db_and_tables` 在测试运行前被调用。这是一个目标明确、影响范围最小的修复方案。
 
 **反馈:**
+* **2025-07-06**: 已修复。此举成功解决了数据库密码认证失败的问题，但暴露了新的问题：`relation "file" does not exist`。
+
+#### **第十四步：修复启动逻辑中的依赖注入错误**
+
+**问题:**
+`tests/test_api.py` 在测试设置阶段就失败了，错误是 `AttributeError: 'Depends' object has no attribute 'minio'`。
+
+**根本原因分析:**
+我们上一步的修复是正确的，`startup` 事件被成功触发。但该事件的处理函数 `on_startup` 内部直接调用了 `get_s3_storage()`。`get_s3_storage` 是一个 FastAPI 依赖项，它期望 FastAPI 框架来为其提供 `config` 参数。在 `startup` 事件这种上下文之外被直接调用时，它的 `config` 参数没有被正确注入，导致了错误。
+
+**解决方案 (最小化修改):**
+修改 `main.py` 中的 `on_startup` 函数。我们将不再直接调用依赖项 `get_s3_storage()`，而是手动执行与它相同的逻辑：
+1.  调用 `get_core_config()` 来获取配置对象。
+2.  使用返回的 `config.minio` 来直接实例化 `S3Storage`。
+3.  调用实例上的 `_create_bucket_if_not_exists()` 方法。
+这会绕过错误的依赖注入调用，同时保持原有功能不变。
+
+**反馈:**
 * **2025-07-06**: 待执行。
