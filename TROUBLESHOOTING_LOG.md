@@ -316,4 +316,20 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 修改 `src/nexusmind/storage/s3_storage.py` 中 `S3Storage` 类的 `__init__` 方法。我们将动态地构建传递给 `boto3.client` 的参数。只有当 `self.config.endpoint` 确实存在时，我们才将 `endpoint_url` 这个键值对添加到参数中。这样，在测试环境中，当 `moto` 处于活动状态且我们不提供 endpoint URL 时，`boto3` 客户端将能被 `moto` 正确地拦截和模拟。
 
 **反馈:**
+* **2025-07-06**: 已执行。应用代码现在已准备好支持 `moto` 模拟。
+
+#### **第十八步: 在测试中集成 `moto` 并移除冲突的配置**
+
+**问题:**
+`test_async_upload_and_chat` 测试仍然失败，API 返回 500 错误，日志显示 `botocore.exceptions.ClientError: An error occurred (SlowDownRead)`。
+
+**根本原因分析:**
+我们在第十七步中正确地修改了 `s3_storage.py`，使其不再硬编码 `endpoint_url`。然而，在当前的测试配置 (`tests/test_api.py`) 中，`settings` fixture 仍然在通过 `monkeypatch.setenv` 设置 `AWS_ENDPOINT_URL` 环境变量。我们的 `MinioConfig` Pydantic 模型会读取这个环境变量，导致 `S3Storage` 在初始化时依然拿到了 `endpoint_url`，从而继续绕过 `moto` 的模拟。
+
+**解决方案(最小化修改):**
+为了最终让 `moto` 生效，我们需要在测试代码中完成两件事：
+1.  **移除冲突配置**: 修改 `tests/test_api.py` 的 `settings` fixture，移除 `monkeypatch.setenv("AWS_ENDPOINT_URL", ...)` 这一行。
+2.  **启用 `moto`**: 创建一个新的、专门用于模拟 AWS 的 fixture（例如，`mock_aws_env`），它会使用 `@mock_aws` 上下文管理器，并在其中创建 S3 bucket。然后将这个 fixture 应用到需要 S3 模拟的测试中。
+
+**反馈:**
 * **2025-07-06**: 待执行。

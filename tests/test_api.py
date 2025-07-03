@@ -28,7 +28,6 @@ def settings(monkeypatch):
     monkeypatch.setenv("API_KEYS", f'["{VALID_API_KEY}"]')
     monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
-    monkeypatch.setenv("AWS_ENDPOINT_URL", "http://localhost:9000")
     monkeypatch.setenv("S3_BUCKET_NAME", "test-bucket")
 
     # Force Celery to run tasks eagerly (synchronously) and store results in tests
@@ -50,29 +49,6 @@ def test_txt_content() -> str:
 
 
 @pytest.fixture
-def mock_s3_environment(settings):
-    """
-    Creates a mock S3 environment for testing.
-    This fixture ensures that S3 calls are intercepted by moto.
-    """
-    # Moto uses these env vars to mock the AWS credentials
-    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
-    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
-    os.environ["AWS_SECURITY_TOKEN"] = "testing"
-    os.environ["AWS_SESSION_TOKEN"] = "testing"
-    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # Default region for moto
-    
-    # Remove endpoint URL to force boto3 to use moto's mock endpoint
-    os.environ.pop("AWS_ENDPOINT_URL", None)
-
-    with mock_aws():
-        # Create a mock bucket for the test
-        s3 = boto3.client("s3", region_name="us-east-1")
-        s3.create_bucket(Bucket="test-bucket")
-        yield
-
-
-@pytest.fixture
 def mock_embedding() -> list[float]:
     # A 1536-dimensional vector of 0.1s, similar to text-embedding-ada-002
     return [0.1] * 1536
@@ -86,7 +62,7 @@ def test_async_upload_and_chat(
     mock_completion_call,
     test_txt_content,
     mock_embedding,
-    mock_s3_environment,
+    settings,
     api_client,
 ):
     """
