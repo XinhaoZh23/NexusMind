@@ -1,6 +1,7 @@
 import logging
 
 import boto3
+from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from ..base_config import MinioConfig
@@ -13,9 +14,18 @@ class S3Storage(StorageBase):
     def __init__(self, config: MinioConfig):
         self.config = config
 
+        # Disable retries to get the root error faster during debugging
+        retry_config = Config(
+            retries={
+                'max_attempts': 0,
+                'mode': 'standard'
+            }
+        )
+
         client_kwargs = {
             "aws_access_key_id": self.config.access_key,
             "aws_secret_access_key": self.config.secret_key.get_secret_value(),
+            "config": retry_config
         }
 
         # Conditionally add endpoint_url for MinIO/LocalStack

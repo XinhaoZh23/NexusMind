@@ -350,4 +350,21 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 4.  在测试函数的一开始，使用 `s3_mock.create_bucket(...)` 来显式创建测试所需的 S3 存储桶，确保应用代码在调用 `put_object` 之前，存储桶已经存在于模拟环境中。
 
 **反馈:**
+* **2025-07-06**: **失败**。令人意外的是，即使用了被认为是最佳实践的 `fixture` 模式，错误依旧。这表明问题可能在于 `boto3` 客户端的配置方式，或者 `TestClient` 与 `moto` 之间更深层次的冲突。
+
+#### **第二十步 (调试): 禁用 Boto3 重试以暴露根本错误**
+
+**问题:**
+`SlowDownRead` 错误仍在发生，它是一个高层次的重试错误，掩盖了最初的失败原因。
+
+**根本原因分析:**
+我们目前的理论是，`boto3` 客户端在第一次尝试连接时就遇到了一个根本性的错误（如 `EndpointConnectionError`），但其默认的重试逻辑捕获了这个错误并反复尝试，最终才因超出重试次数而报告 `SlowDownRead`。为了验证这一点并找出真正的根本原因，我们需要禁用重试，以便在日志中看到第一次尝试失败时的原始 `Traceback`。
+
+**解决方案 (最小化修改):**
+修改 `src/nexusmind/storage/s3_storage.py` 文件中的 `S3Storage.__init__` 方法：
+1.  导入 `botocore.config.Config`。
+2.  创建一个 `Config` 对象，在其中将重试策略的 `max_attempts` 设置为 `0`。
+3.  在创建 `boto3.client` 时，将这个 `config` 对象传递进去。
+
+**反馈:**
 * **2025-07-06**: 待执行。
