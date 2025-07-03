@@ -10,20 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 class S3Storage(StorageBase):
-    def __init__(self, config: MinioConfig):
+    def __init__(self, config: MinioConfig, s3_client):
         self.config = config
-
-        client_kwargs = {
-            "aws_access_key_id": self.config.access_key,
-            "aws_secret_access_key": self.config.secret_key.get_secret_value(),
-            "region_name": "us-east-1"  # Required for moto stability
-        }
-
-        # Conditionally add endpoint_url for MinIO/LocalStack
-        if self.config.endpoint:
-            client_kwargs["endpoint_url"] = self.config.endpoint
-
-        self.s3_client = boto3.client("s3", **client_kwargs)
+        self.s3_client = s3_client
         self._create_bucket_if_not_exists()
 
     def _create_bucket_if_not_exists(self):
@@ -63,4 +52,14 @@ def get_s3_storage() -> S3Storage:
     # This is a placeholder for dependency injection
     # In a real app, this would get the config from a global registry or context
     config = MinioConfig()
-    return S3Storage(config=config) 
+    client_kwargs = {
+        "aws_access_key_id": config.access_key,
+        "aws_secret_access_key": config.secret_key.get_secret_value(),
+        "region_name": "us-east-1"
+    }
+    if config.endpoint:
+        client_kwargs["endpoint_url"] = config.endpoint
+    
+    s3_client = boto3.client("s3", **client_kwargs)
+
+    return S3Storage(config=config, s3_client=s3_client) 

@@ -9,13 +9,36 @@ from moto import mock_aws
 
 from nexusmind.celery_app import app as celery_app
 from main import app, get_core_config
+from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
+from nexusmind.base_config import MinioConfig
 
 
 @pytest.fixture
-def api_client() -> TestClient:
-    """Provides a TestClient instance for API testing."""
-    with TestClient(app) as client:
-        yield client
+def api_client(settings) -> TestClient:
+    """
+    Provides a TestClient instance for API testing with mocked S3.
+    This fixture handles S3 mocking and dependency overrides.
+    """
+    with mock_aws():
+        # 1. Create a mock S3 client
+        s3_client = boto3.client("s3", region_name="us-east-1")
+
+        # 2. Define the dependency override
+        def get_mock_s3_storage():
+            config = get_core_config().minio
+            # Ensure the bucket exists in the mock environment
+            s3_client.create_bucket(Bucket=config.bucket)
+            # Inject the mock client
+            return S3Storage(config=config, s3_client=s3_client)
+
+        # 3. Apply the override
+        app.dependency_overrides[get_s3_storage] = get_mock_s3_storage
+
+        with TestClient(app) as client:
+            yield client
+
+        # 4. Clean up the override
+        app.dependency_overrides.clear()
 
 
 # --- Test Fixtures ---
@@ -57,13 +80,6 @@ def mock_embedding() -> list[float]:
     return [0.1] * 1536
 
 
-@pytest.fixture
-def s3_mock():
-    """Fixture to mock S3 a service."""
-    with mock_aws():
-        yield boto3.client("s3", region_name="us-east-1")
-
-
 # --- E2E API Test ---
 @patch("nexusmind.llm.llm_endpoint.litellm.completion")
 @patch("nexusmind.llm.llm_endpoint.litellm.embedding")
@@ -72,9 +88,7 @@ def test_async_upload_and_chat(
     mock_completion_call,
     test_txt_content,
     mock_embedding,
-    settings,
-    api_client,
-    s3_mock,
+    api_client,  # Note: settings is now used by api_client
 ):
     """
     Tests the full end-to-end flow in a synchronous testing environment.
@@ -82,10 +96,6 @@ def test_async_upload_and_chat(
     2. Ask a question about the file.
     3. Verify the response.
     """
-    # --- Setup mock S3 ---
-    bucket_name = os.getenv("S3_BUCKET_NAME", "test-bucket")
-    s3_mock.create_bucket(Bucket=bucket_name)
-
     # --- Mock external services ---
     mock_embedding_response = MagicMock()
     mock_embedding_response.data = [MagicMock()]
@@ -157,3 +167,22 @@ def test_chat_with_invalid_api_key(settings, api_client):
     )
     assert response.status_code == 403
     assert "Could not validate credentials" in response.text
+
+
+# --- Isolated S3 Test ---
+@mock_aws
+def test_s3_storage_direct_instantiation(settings):
+    """
+    Tests if S3Storage can be instantiated and used directly,
+    bypassing the FastAPI TestClient to isolate moto integration.
+    """
+    try:
+        # This config will be populated by the `settings` fixture's env vars
+        minio_config = MinioConfig()
+        storage = S3Storage(config=minio_config)
+        # The __init__ of S3Storage calls _create_bucket_if_not_exists().
+        # If we reach here, it means the bucket was created in the mock env.
+        # Let's double check by putting an object.
+        storage.save("test-direct.txt", b"hello world")
+    except Exception as e:
+        pytest.fail(f"S3Storage direct instantiation failed: {e}")

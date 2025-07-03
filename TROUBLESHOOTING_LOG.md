@@ -168,9 +168,6 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 
 ## 2025-07-06: 修复运行时 (Runtime) 错误 (续)
 
-**问题描述:**
-在修正了 `.gitignore` 问题并能正确追踪 `s3_storage.py` 文件后，`pytest` 现在可以运行，但报告了 4 个新的运行时错误。
-
 ### **执行计划**
 
 #### **第一步：修复 `brain.py` 中的 `ModuleNotFoundError`**
@@ -350,7 +347,7 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 4.  在测试函数的一开始，使用 `s3_mock.create_bucket(...)` 来显式创建测试所需的 S3 存储桶，确保应用代码在调用 `put_object` 之前，存储桶已经存在于模拟环境中。
 
 **反馈:**
-* **2025-07-06**: **失败**。令人意外的是，即使用了被认为是最佳实践的 `fixture` 模式，错误依旧。这表明问题可能在于 `boto3` 客户端的配置方式，或者 `TestClient` 与 `moto` 之间更深层次的冲突。
+* **2025-07-06**: **失败**。此方案未生效，测试结果与修复前完全相同，依然报 `SlowDownRead` 错误。根本原因可能是 `@mock_aws` 装饰器与 FastAPI 的 `TestClient` 生命周期交互不当，导致在 `boto3` 客户端被创建时模拟还未生效。
 
 #### **第二十步 (调试): 禁用 Boto3 重试以暴露根本错误**
 
@@ -396,6 +393,50 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 1.  移除对 `botocore.config.Config` 的导入。
 2.  删除创建 `retry_config` 对象的代码。
 3.  从 `boto3.client` 的参数中移除 `config` 项。
+
+**反馈:**
+* **2025-07-06**: **已完成**。调试代码已移除，`boto3` 客户端恢复使用默认重试策略。测试结果表明核心问题依然存在。
+
+#### **第二十三步 (简化测试): 依赖应用自身逻辑创建存储桶**
+
+**问题:**
+所有 `moto` 模拟方案均告失败，`SlowDownRead` 错误持续存在。
+
+**根本原因分析:**
+我们之前的测试都在 fixture 中预创建 S3 存储桶，然后让应用代码去使用它。这种测试代码和应用代码之间的分离交互，可能掩盖了问题的真相。一个更纯粹的测试方法是，完全信任并依赖应用自身的 `S3Storage._create_bucket_if_not_exists()` 方法来完成存储桶的创建。如果这个方法在 `moto` 环境下能够成功执行（即 `head_bucket` 失败后成功调用 `create_bucket`），那么后续的 `put_object` 也理应成功。反之，如果连 `create_bucket` 都失败了，那就证明应用内部的 `boto3` 客户端确实有问题。
+
+**解决方案 (最小化修改):**
+修改 `tests/test_api.py` 中的 `test_async_upload_and_chat` 函数，移除（或注释掉）手动创建存储桶的语句： `s3_mock.create_bucket(Bucket=bucket_name)`。
+
+**反馈:**
+* **2025-07-06**: **失败但获得了关键结论**。测试结果表明，即使移除了测试代码中所有对 S3 的干预，应用自身的 `S3Storage` 类在初始化时依然失败。这证明了问题**内在于 `S3Storage` 类与 `moto` 的交互，而与 FastAPI 或 `TestClient` 无关**。
+
+#### **第二十四步 (终极隔离): 在测试中直接实例化 `S3Storage`**
+
+**问题:**
+`S3Storage` 无法在 `moto` 环境下被正确初始化。
+
+**根本原因分析:**
+为了进行最终确认，我们需要进行一次终极隔离测试，完全抛开 FastAPI 的依赖注入和 `TestClient`，直接在 `moto` 的上下文中尝试创建 `S3Storage` 实例。如果这个测试也失败，则 100% 证明问题出在 `S3Storage` 的 `__init__` 方法中的 `boto3.client` 调用上。
+
+**解决方案 (最小化修改):**
+在 `tests/test_api.py` 中添加一个新的、独立的测试函数 `test_s3_storage_direct_instantiation`。该函数将在 `@mock_aws` 装饰器（或 `s3_mock` fixture）的保护下，直接导入并实例化 `S3Storage`。如果实例化过程（包括其中的 `_create_bucket_if_not_exists`）没有抛出异常，则测试通过。
+
+**反馈:**
+* **2025-07-06**: **失败，但获得了决定性的证据。** 新的隔离测试 `test_s3_storage_direct_instantiation` 同样失败，并报告了 `SlowDownRead` 错误。这最终证明了问题根源在于 `S3Storage` 的 `__init__` 方法，它在 `moto` 环境下无法正确初始化 `boto3` 客户端。
+
+#### **第二十五步 (最终方案): 重构 S3Storage 以使用依赖注入**
+
+**问题:**
+`S3Storage` 的内部设计使其难以测试。
+
+**根本原因分析:**
+`S3Storage` 类违反了依赖倒置原则。它自己负责创建和管理其依赖项（`boto3` 客户端），这种紧密耦合使得在测试中替换该依赖项变得极其困难和不可靠，导致了我们之前所有 `moto` 模拟的失败。正确的模式是控制反转（IoC），即由外部创建客户端并将其"注入"到 `S3Storage` 中。
+
+**解决方案 (重构):**
+1.  **修改 `S3Storage`**: 重构 `S3Storage.__init__`，使其不再创建 `boto3` 客户端，而是必须接收一个外部传入的 `boto3_client`。
+2.  **修改应用代码**: 调整 `main.py` 和 `s3_storage.py` 中的依赖注入函数 (`get_s3_storage`)，使其负责创建 `boto3` 客户端，然后用它来实例化 `S3Storage`。
+3.  **修改测试**: 重构 `tests/test_api.py`。在测试的 `api_client` fixture 中，使用 `moto` 创建一个模拟的 `s3_client`，然后利用 FastAPI 的 `app.dependency_overrides` 功能，将应用中原始的 `get_s3_storage` 依赖替换为一个返回注入了**模拟客户端**的 `S3Storage` 实例的新函数。同时，移除不再需要的 `s3_mock` fixture 和隔离测试。
 
 **反馈:**
 * **2025-07-06**: 待执行。
