@@ -335,4 +335,19 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 在 `main.py` 文件顶部，紧随其他导入语句之后，添加 `logger = get_logger(__name__)`。
 
 **反馈:**
+* **2025-07-06**: 已修复。此举成功解决了 `NameError`，使代码得以执行到与数据库交互的步骤，并最终暴露出基础设施层面的配置错误。
+
+#### **第十二步：修复数据库连接密码错误**
+
+**问题:**
+`test_api.py` 测试失败，API 返回 500 错误，日志显示 `FATAL: password authentication failed for user "user"`。
+
+**根本原因分析:**
+代码中 `PostgresConfig` 定义的默认连接密码与 `docker-compose.yml` 中为 PostgreSQL 服务设置的密码不匹配。这是一个典型的环境配置不一致问题。
+
+**解决方案:**
+1.  检查 `docker-compose.yml` 文件，找出为 PostgreSQL 服务设定的 `POSTGRES_USER` 和 `POSTGRES_PASSWORD`。
+2.  修改 `src/nexusmind/base_config.py`，将 `PostgresConfig` 类中的 `user` 和 `password` 字段的默认值更新为与 `docker-compose.yml` 中完全一致的值。
+
+**反馈:**
 * **2025-07-06**: 待执行。

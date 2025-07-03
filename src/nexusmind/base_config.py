@@ -18,12 +18,15 @@ class BaseConfig(BaseSettings):
 class PostgresConfig(BaseConfig):
     """PostgreSQL configuration."""
 
-    db_host: str = "localhost"
-    db_port: int = 5432
-    db_user: str = "postgres"
-    db_password: str = "postgres"
-    db_name: str = "nexusmind"
-    db_echo: bool = False
+    model_config = SettingsConfigDict(env_prefix="POSTGRES_")
+    user: str = "nexusmind_user"
+    password: SecretStr = "nexusmind_password"
+    host: str = "localhost"
+    port: int = 5432
+    db: str = "nexusmind_db"
+
+    def get_db_url(self) -> str:
+        return f"postgresql://{self.user}:{self.password.get_secret_value()}@{self.host}:{self.port}/{self.db}"
 
 
 class RedisConfig(BaseConfig):
