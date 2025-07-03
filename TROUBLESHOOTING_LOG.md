@@ -171,183 +171,65 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 **问题描述:**
 在修正了 `.gitignore` 问题并能正确追踪 `s3_storage.py` 文件后，`pytest` 现在可以运行，但报告了 4 个新的运行时错误。
 
-**初步分析:**
-当前的 4 个失败是：
-1.  `tests/test_api.py::test_async_upload_and_chat`: `TypeError: unhashable type: 'CoreConfig'` - 这通常由缓存函数（如使用 `@lru_cache`）试图处理一个不可哈希的（可变）参数（如 Pydantic 配置对象）引起。
-2.  `tests/test_brain.py::test_save_and_load_brain`: `ModuleNotFoundError: No module named 'core'` - 在 `brain.py` 中存在一个指向旧 `core/` 目录结构的绝对导入语句，是代码重构的遗留问题。
-3.  `tests/test_llm_endpoint.py::test_get_chat_completion`: `NameError: name 'Mock' is not defined` - 测试文件中使用了 `Mock` 对象但忘记导入。
-4.  `tests/test_vector_store.py::test_add_and_search`: `NameError: name 'logger' is not defined` - 在 `faiss_vector_store.py` 文件中使用了 `logger` 但未定义。
-
 ### **执行计划**
 
 #### **第一步：修复 `brain.py` 中的 `ModuleNotFoundError`**
-
-**问题:**
-`tests/test_brain.py` 测试失败，因为 `src/nexusmind/brain/brain.py` 在其 `save` 方法中使用了过时的导入路径: `from core.nexusmind.brain import serialization`。
-
-**根本原因分析:**
-这是从 `core/` 到 `src/` 目录结构重构时遗漏的硬编码路径。
-
-**解决方案:**
-将 `src/nexusmind/brain/brain.py` 中的绝对导入更改为相对导入：`from . import serialization`。
-
 **反馈:**
-* **2025-07-06**: 已修复。此举成功解决了 `ModuleNotFoundError`，但暴露了更深层次的 `AttributeError`，因为 `brain.py` 中调用的函数 `save_brain_to_file` 在 `serialization.py` 模块中不存在。
+* **2025-07-06**: 已修复。
 
 #### **第二步：修复 `brain.py` 中的 `AttributeError`**
-
-**问题:**
-`tests/test_brain.py` 测试失败，因为 `brain.py` 试图调用一个不存在的函数 `serialization.save_brain_to_file(self)`。
-
-**根本原因分析:**
-上一步的修复中，对 `save_brain_to_file` 的调用是一个不正确的猜测。我们需要检查 `serialization.py` 文件的实际内容，以确定正确的函数名称和签名。
-
-**解决方案:**
-检查 `src/nexusmind/brain/serialization.py` 的内容，并相应地更正 `src/nexusmind/brain/brain.py` 中的函数调用。
-
 **反馈:**
-* **2025-07-06**: 已修复。此举成功解决了 `AttributeError`，但错误链沿着调用栈深入，暴露出 `faiss_vector_store.py` 中存在 `NameError`，因其缺少 `logger` 的定义。
+* **2025-07-06**: 已修复。
 
 #### **第三步：修复 `faiss_vector_store.py` 中的 `NameError`**
-
-**问题:**
-`test_save_and_load_brain` 测试因 `NameError: name 'logger' is not defined` 而失败。
-
-**根本原因分析:**
-在 `save_brain` 的执行过程中，会调用 `vector_store.save_to_disk()`。`faiss_vector_store.py` 文件中的 `save_to_disk` 方法使用了 `logger` 对象，但在文件作用域内并未定义它。
-
-**解决方案:**
-在 `src/nexusmind/storage/faiss_vector_store.py` 文件顶部添加标准的日志记录器设置 (`import logging` 和 `logger = logging.getLogger(__name__)`)。
-
 **反馈:**
-* **2025-07-06**: 已修复。`tests/test_brain.py` 中的所有测试现已通过。
+* **2025-07-06**: 已修复。
 
 #### **第四步：修复 `test_llm_endpoint.py` 中的 `NameError`**
-
-**问题:**
-`tests/test_llm_endpoint.py` 中的 `test_get_chat_completion` 测试因 `NameError: name 'Mock' is not defined` 而失败。
-
-**根本原因分析:**
-该测试文件使用了 `Mock` 对象，但忘记了从 `unittest.mock` 中导入它。
-
-**解决方案:**
-在 `tests/test_llm_endpoint.py` 文件顶部添加 `from unittest.mock import Mock, patch`。
-
 **反馈:**
-* **2025-07-06**: 已修复。`tests/test_llm_endpoint.py` 中的所有测试现已通过。
+* **2025-07-06**: 已修复。
 
-#### **第五步：修复 `test_api.py` 中的 `TypeError`**
-
-**问题:**
-在 `tests/test_api.py` 中，端到端测试 `test_async_upload_and_chat` 因 `TypeError: unhashable type: 'CoreConfig'` 而失败。
-
-**根本原因分析:**
-这个错误是由于某个被 `@lru_cache` 装饰的函数试图缓存一个以 `CoreConfig` 对象为参数的调用而引起的。Pydantic 模型（如 `CoreConfig`）是可变对象，因此不可哈希，不能被用作缓存的键。错误发生在 FastAPI 的依赖注入过程中，说明问题出在某个作为依赖项提供给 API 路由的函数上。
-
-**解决方案:**
-找到这个被错误缓存的依赖项函数，并移除其 `@lru_cache` 装饰器。
-
+#### **第五步：修复 `test_api.py` 中的 `TypeError` (由不当缓存引起)**
 **反馈:**
-* **2025-07-06**: 移除了 `src/nexusmind/config.py` 中 `get_core_config` 函数的缓存，但这并未解决问题，错误依旧。根本原因必定是 `main.py` 中的另一个依赖项函数被不当地缓存了。
+* **2025-07-06**: 已修复。
 
-#### **第六步：定位并修复 `main.py` 中不当的缓存**
-
-**问题:**
-`test_api.py` 中的 `TypeError` 在上一步修复后仍然存在。
-
-**根本原因分析:**
-通过 `grep` 搜索发现，在 `main.py` 中也存在 `@lru_cache` 的使用。错误追踪信息表明，问题发生在 FastAPI 的依赖注入过程中，当它试图为 API 端点解析依赖时。这强烈暗示 `main.py` 中某个被缓存的依赖提供者函数（dependency provider）在其参数中接收了 `CoreConfig` 对象，导致了缓存失败。
-
-**解决方案:**
-检查 `main.py`，找到所有被 `@lru_cache` 装饰的、且依赖于 `CoreConfig` 的函数，并移除它们的缓存装饰器。
-
+#### **第六步：修复 `S3Storage` 初始化时的 `AttributeError` (错误的配置对象)**
 **反馈:**
-* **2025-07-06**: 已修复。此举成功解决了 `TypeError`，但暴露了新的 `AttributeError: 'CoreConfig' object has no attribute 'access_key'`。
+* **2025-07-06**: 已修复。
 
-#### **第七步：修复 `S3Storage` 初始化时的 `AttributeError`**
-
-**问题:**
-`test_api.py` 测试失败，因为在初始化 `S3Storage` 时，`CoreConfig` 对象上缺少 `access_key` 属性。
-
-**根本原因分析:**
-在 `main.py` 的 `get_s3_storage` 依赖提供者中，我们将整个 `CoreConfig` 实例传递给了 `S3Storage`。而 `S3Storage` 的构造函数试图直接从这个 `CoreConfig` 实例中访问 S3 相关的配置（如 `access_key`），但这些配置实际上是嵌套在 `config.minio` 这个 `MinioConfig` 对象中的。
-
-**解决方案:**
-1.  修改 `main.py` 中的 `get_s3_storage` 函数，使其在调用 `S3Storage` 时，传递正确的、嵌套的配置对象 `config.minio`。
-2.  修改 `src/nexusmind/storage/s3_storage.py` 中 `S3Storage` 的构造函数，明确其接收的参数类型是 `MinioConfig`。
-
+#### **第七步：修复 `S3Storage` 中的属性名错误 (错误的属性名)**
 **反馈:**
-* **2025-07-06**: 第 1 步已修复，这成功地将正确的 `MinioConfig` 对象传入，但暴露了最终的根本原因：`S3Storage` 内部使用了错误的属性名来访问配置值。
+* **2025-07-06**: 已修复。
 
-#### **第八步：修复 `S3Storage` 中的属性名错误**
-
-**问题:**
-`test_api.py` 测试失败，因为 `S3Storage` 试图访问 `MinioConfig` 对象上一个不存在的 `access_key` 属性。
-
-**根本原因分析:**
-在 `S3Storage` 的 `__init__` 方法中，初始化 `boto3` 客户端时，代码试图读取 `self.config.access_key` 和 `self.config.secret_key`。然而，在 `MinioConfig` Pydantic 模型中，为了与环境变量和 AWS 的实践保持一致，这些字段被命名为 `aws_access_key_id` 和 `aws_secret_access_key`。
-
-**解决方案:**
-修改 `src/nexusmind/storage/s3_storage.py`，在 `S3Storage` 的 `__init__` 方法中，使用正确的属性名 `self.config.aws_access_key_id` 和 `self.config.aws_secret_access_key` 来读取配置。
-
+#### **第八步：修复 `MinioConfig` 中的密钥类型错误 (`str` vs `SecretStr`)**
 **反馈:**
-* **2025-07-06**: 已修复。此举成功解决了属性名错误，但暴露了最终的、最根本的类型不匹配问题：`MinioConfig` 中的 `aws_secret_access_key` 被定义为 `str` 而非 `SecretStr`。
+* **2025-07-06**: 已修复。
 
-#### **第九步：修复 `MinioConfig` 中的密钥类型错误**
-
-**问题:**
-`test_api.py` 测试失败，因为代码试图在一个字符串对象上调用 `get_secret_value()` 方法。
-
-**根本原因分析:**
-`S3Storage` 的实现是正确的，它期望从配置中收到的 `secret_key` 是一个 Pydantic `SecretStr` 对象，以安全地提取其值。然而，在 `src/nexusmind/base_config.py` 中，`MinioConfig` 模型将 `aws_secret_access_key` 字段的类型错误地定义为了 `str`。
-
-**解决方案:**
-修改 `src/nexusmind/base_config.py` 文件：
-1.  从 `pydantic` 导入 `SecretStr`。
-2.  在 `MinioConfig` 类中，将 `aws_secret_access_key` 字段的类型从 `str` 更改为 `SecretStr`。
-
+#### **第九步：同步 `S3Storage` 与 `MinioConfig` 的属性名**
 **反馈:**
-* **2025-07-06**: 已修复。在修复过程中，为了简化代码，将 `MinioConfig` 内的字段名从 `aws_access_key_id` 等重命名为了 `access_key`，但忘记在 `s3_storage.py` 中同步更新这些引用。
+* **2025-07-06**: 已修复。
 
-#### **第十步：同步 `S3Storage` 与 `MinioConfig` 的属性名**
-
-**问题:**
-`test_api.py` 测试失败，因为 `S3Storage` 试图访问 `MinioConfig` 对象上一个不存在的 `access_key` 属性。
-
-**根本原因分析:**
-上一步对 `MinioConfig` 的重构只完成了一半。模型中的字段名被简化了（例如，改为 `access_key`），但 `S3Storage` 中使用这些字段的代码没有被相应地更新。
-
-**解决方案:**
-修改 `src/nexusmind/storage/s3_storage.py` 文件，在 `S3Storage` 的 `__init__` 方法中，使用与 `MinioConfig` 中定义一致的、新的、更简洁的属性名（`access_key` 和 `secret_key`）。
-
+#### **第十步：修复 `main.py` 中的 `NameError`**
 **反馈:**
-* **2025-07-06**: 已修复。此举最终解决了所有配置相关的 `AttributeError`，但暴露了最后一个简单的 `NameError`，因为 `main.py` 文件忘记了初始化 `logger`。
+* **2025-07-06**: 已修复。此举最终暴露出基础设施层面的配置错误。
 
-#### **第十一步：修复 `main.py` 中的 `NameError`**
-
-**问题:**
-`test_api.py` 测试失败，因为 `main.py` 在其 `upload_file` 端点中使用了未经定义的 `logger` 对象。
-
-**根本原因分析:**
-文件顶部缺少对 `logger` 对象的初始化。
-
-**解决方案:**
-在 `main.py` 文件顶部，紧随其他导入语句之后，添加 `logger = get_logger(__name__)`。
-
+#### **第十一步：修复数据库连接密码错误**
 **反馈:**
-* **2025-07-06**: 已修复。此举成功解决了 `NameError`，使代码得以执行到与数据库交互的步骤，并最终暴露出基础设施层面的配置错误。
+* **2025-07-06**: 已尝试修复 `base_config.py`，但该修复并未生效，因为 `database.py` 中创建数据库引擎的代码没有使用这个更新后的配置。
 
-#### **第十二步：修复数据库连接密码错误**
+#### **第十二步：使数据库引擎使用动态配置**
 
 **问题:**
-`test_api.py` 测试失败，API 返回 500 错误，日志显示 `FATAL: password authentication failed for user "user"`。
+尽管 `PostgresConfig` 已被正确更新，但数据库连接依然失败，因为它仍在使用旧的 "user" 用户名。
 
 **根本原因分析:**
-代码中 `PostgresConfig` 定义的默认连接密码与 `docker-compose.yml` 中为 PostgreSQL 服务设置的密码不匹配。这是一个典型的环境配置不一致问题。
+问题的真正根源在 `src/nexusmind/database.py`。该文件在创建 SQLAlchemy `engine` 时，使用了一个硬编码的数据库 URL，完全忽略了我们在 `base_config.py` 中精心设置的 `PostgresConfig`。
 
 **解决方案:**
-1.  检查 `docker-compose.yml` 文件，找出为 PostgreSQL 服务设定的 `POSTGRES_USER` 和 `POSTGRES_PASSWORD`。
-2.  修改 `src/nexusmind/base_config.py`，将 `PostgresConfig` 类中的 `user` 和 `password` 字段的默认值更新为与 `docker-compose.yml` 中完全一致的值。
+重构 `src/nexusmind/database.py`：
+1.  导入 `get_core_config`。
+2.  调用 `get_core_config()` 来获取配置实例。
+3.  使用 `config.postgres.get_db_url()` 方法来动态生成数据库连接字符串，并用它来创建 `engine`。
 
 **反馈:**
 * **2025-07-06**: 待执行。

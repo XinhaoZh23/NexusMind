@@ -10,7 +10,7 @@ config = CoreConfig()
 # The 'echo=True' argument is useful for debugging as it logs all SQL statements.
 # It should probably be turned off in production.
 try:
-    engine = create_engine(config.database_url, echo=True)
+    engine = create_engine(config.postgres.get_db_url(), echo=True)
     logger.info("Database engine created successfully.")
 except Exception as e:
     logger.error(f"Failed to create database engine: {e}")

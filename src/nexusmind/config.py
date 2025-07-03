@@ -28,9 +28,6 @@ class CoreConfig(BaseConfig):
     # The API key for OpenAI services, loaded from OPENAI_API_KEY.
     openai_api_key: str = "sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
-    # --- Database Configuration ---
-    database_url: str = "postgresql://user:password@localhost:5432/nexusmind_db"
-
     # --- S3 Configuration ---
     s3_bucket_name: str = "nexusmind-document-storage"
     aws_access_key_id: str | None = None
