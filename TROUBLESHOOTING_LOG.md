@@ -312,13 +312,27 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 #### **第十步：同步 `S3Storage` 与 `MinioConfig` 的属性名**
 
 **问题:**
-`test_api.py` 测试失败，因为 `S3Storage` 试图访问 `MinioConfig` 对象上一个不存在的 `aws_access_key_id` 属性。
+`test_api.py` 测试失败，因为 `S3Storage` 试图访问 `MinioConfig` 对象上一个不存在的 `access_key` 属性。
 
 **根本原因分析:**
 上一步对 `MinioConfig` 的重构只完成了一半。模型中的字段名被简化了（例如，改为 `access_key`），但 `S3Storage` 中使用这些字段的代码没有被相应地更新。
 
 **解决方案:**
 修改 `src/nexusmind/storage/s3_storage.py` 文件，在 `S3Storage` 的 `__init__` 方法中，使用与 `MinioConfig` 中定义一致的、新的、更简洁的属性名（`access_key` 和 `secret_key`）。
+
+**反馈:**
+* **2025-07-06**: 已修复。此举最终解决了所有配置相关的 `AttributeError`，但暴露了最后一个简单的 `NameError`，因为 `main.py` 文件忘记了初始化 `logger`。
+
+#### **第十一步：修复 `main.py` 中的 `NameError`**
+
+**问题:**
+`test_api.py` 测试失败，因为 `main.py` 在其 `upload_file` 端点中使用了未经定义的 `logger` 对象。
+
+**根本原因分析:**
+文件顶部缺少对 `logger` 对象的初始化。
+
+**解决方案:**
+在 `main.py` 文件顶部，紧随其他导入语句之后，添加 `logger = get_logger(__name__)`。
 
 **反馈:**
 * **2025-07-06**: 待执行。

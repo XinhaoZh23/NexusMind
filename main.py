@@ -24,6 +24,8 @@ from nexusmind.rag.nexus_rag import NexusRAG
 from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
 from nexusmind.tasks import process_file
 
+logger = get_logger(__name__)
+
 # --- Security and App Initialization ---
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=True)
 
