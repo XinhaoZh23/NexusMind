@@ -277,4 +277,18 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 2.  修改 `src/nexusmind/storage/s3_storage.py` 中 `S3Storage` 的构造函数，明确其接收的参数类型是 `MinioConfig`。
 
 **反馈:**
+* **2025-07-06**: 第 1 步已修复，这成功地将正确的 `MinioConfig` 对象传入，但暴露了最终的根本原因：`S3Storage` 内部使用了错误的属性名来访问配置值。
+
+#### **第八步：修复 `S3Storage` 中的属性名错误**
+
+**问题:**
+`test_api.py` 测试失败，因为 `S3Storage` 试图访问 `MinioConfig` 对象上一个不存在的 `access_key` 属性。
+
+**根本原因分析:**
+在 `S3Storage` 的 `__init__` 方法中，初始化 `boto3` 客户端时，代码试图读取 `self.config.access_key` 和 `self.config.secret_key`。然而，在 `MinioConfig` Pydantic 模型中，为了与环境变量和 AWS 的实践保持一致，这些字段被命名为 `aws_access_key_id` 和 `aws_secret_access_key`。
+
+**解决方案:**
+修改 `src/nexusmind/storage/s3_storage.py`，在 `S3Storage` 的 `__init__` 方法中，使用正确的属性名 `self.config.aws_access_key_id` 和 `self.config.aws_secret_access_key` 来读取配置。
+
+**反馈:**
 * **2025-07-06**: 待执行。
