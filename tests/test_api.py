@@ -26,8 +26,11 @@ VALID_API_KEY = "test-key"
 def settings(monkeypatch):
     """Fixture to set environment variables and configure Celery for testing."""
     monkeypatch.setenv("API_KEYS", f'["{VALID_API_KEY}"]')
-    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
-    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
+    # Ensure the endpoint is not set, so moto can mock S3
+    monkeypatch.delenv("AWS_ENDPOINT_URL", raising=False)
+    # Use dummy credentials for moto as per best practice
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("S3_BUCKET_NAME", "test-bucket")
 
     # Force Celery to run tasks eagerly (synchronously) and store results in tests
@@ -54,6 +57,13 @@ def mock_embedding() -> list[float]:
     return [0.1] * 1536
 
 
+@pytest.fixture
+def s3_mock():
+    """Fixture to mock S3 a service."""
+    with mock_aws():
+        yield boto3.client("s3", region_name="us-east-1")
+
+
 # --- E2E API Test ---
 @patch("nexusmind.llm.llm_endpoint.litellm.completion")
 @patch("nexusmind.llm.llm_endpoint.litellm.embedding")
@@ -64,6 +74,7 @@ def test_async_upload_and_chat(
     mock_embedding,
     settings,
     api_client,
+    s3_mock,
 ):
     """
     Tests the full end-to-end flow in a synchronous testing environment.
@@ -71,6 +82,10 @@ def test_async_upload_and_chat(
     2. Ask a question about the file.
     3. Verify the response.
     """
+    # --- Setup mock S3 ---
+    bucket_name = os.getenv("S3_BUCKET_NAME", "test-bucket")
+    s3_mock.create_bucket(Bucket=bucket_name)
+
     # --- Mock external services ---
     mock_embedding_response = MagicMock()
     mock_embedding_response.data = [MagicMock()]

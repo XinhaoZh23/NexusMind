@@ -302,7 +302,7 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 修改 `main.py` 文件中 `/upload` 端点内对 `storage.save` 的调用，将参数顺序从 `(content, file.filename)` 更正为 `(file.filename, content)`。
 
 **反馈:**
-* **2025-07-06**: 已修复。此举解决了 `EndpointResolutionError`，但暴露出 S3 服务端返回的 `SlowDownRead` 错误，这通常与 `boto3` 的重试策略和测试中使用的模拟 S3 服务（如 moto）的兼容性有关。
+* **2025-07-06**: 已修复。此举解决了 `EndpointResolutionError`，但暴露出 S3 服务端返回的 `SlowDownRead` 错误，这进一步证实了 `boto3` 客户端仍在尝试连接一个真实的端点，而不是使用 `moto` 模拟。
 
 #### **第十七步 (重置 & 最终修复): 修正应用代码以支持 `moto` 模拟**
 
@@ -329,7 +329,25 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 **解决方案(最小化修改):**
 为了最终让 `moto` 生效，我们需要在测试代码中完成两件事：
 1.  **移除冲突配置**: 修改 `tests/test_api.py` 的 `settings` fixture，移除 `monkeypatch.setenv("AWS_ENDPOINT_URL", ...)` 这一行。
-2.  **启用 `moto`**: 创建一个新的、专门用于模拟 AWS 的 fixture（例如，`mock_aws_env`），它会使用 `@mock_aws` 上下文管理器，并在其中创建 S3 bucket。然后将这个 fixture 应用到需要 S3 模拟的测试中。
+2.  **启用 `moto`**: 为 `test_async_upload_and_chat` 测试函数添加 `@mock_aws` 装饰器，以确保所有在该测试中进行的 Boto3 调用都被 `moto` 拦截。
+
+**反馈:**
+* **2025-07-06**: **失败**。此方案未生效，测试结果与修复前完全相同，依然报 `SlowDownRead` 错误。根本原因可能是 `@mock_aws` 装饰器与 FastAPI 的 `TestClient` 生命周期交互不当，导致在 `boto3` 客户端被创建时模拟还未生效。
+
+#### **第十九步 (新方案): 使用 `moto` Fixture 进行稳定的 AWS 模拟**
+
+**问题:**
+`@mock_aws` 装饰器未能成功模拟 S3 服务。
+
+**根本原因分析:**
+`pytest` fixture 的执行顺序、FastAPI 应用的启动事件和 `moto` 装饰器的 patching 时机之间存在冲突。一个更健壮的模式是使用一个专门的 `pytest` fixture，它在 `with mock_aws():` 上下文管理器中 `yield` 一个 `boto3` 客户端。这能保证在测试的整个生命周期内，模拟都是激活状态。
+
+**解决方案 (最小化修改):**
+重构 `tests/test_api.py` 以使用 `moto` fixture:
+1.  创建一个 `s3_mock` fixture，它使用 `with mock_aws()` 来包裹并 `yield` 一个 S3 客户端。
+2.  从 `test_async_upload_and_chat` 函数上移除 `@mock_aws` 装饰器。
+3.  将新的 `s3_mock` fixture 作为参数传递给测试函数。
+4.  在测试函数的一开始，使用 `s3_mock.create_bucket(...)` 来显式创建测试所需的 S3 存储桶，确保应用代码在调用 `put_object` 之前，存储桶已经存在于模拟环境中。
 
 **反馈:**
 * **2025-07-06**: 待执行。
