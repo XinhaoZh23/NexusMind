@@ -220,4 +220,18 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 在 `src/nexusmind/storage/faiss_vector_store.py` 文件顶部添加标准的日志记录器设置 (`import logging` 和 `logger = logging.getLogger(__name__)`)。
 
 **反馈:**
+* **2025-07-06**: 已修复。`tests/test_brain.py` 中的所有测试现已通过。
+
+#### **第四步：修复 `test_llm_endpoint.py` 中的 `NameError`**
+
+**问题:**
+`tests/test_llm_endpoint.py` 中的 `test_get_chat_completion` 测试因 `NameError: name 'Mock' is not defined` 而失败。
+
+**根本原因分析:**
+该测试文件使用了 `Mock` 对象，但忘记了从 `unittest.mock` 中导入它。
+
+**解决方案:**
+在 `tests/test_llm_endpoint.py` 文件顶部添加 `from unittest.mock import Mock, patch`。
+
+**反馈:**
 * **2025-07-06**: 待执行。
