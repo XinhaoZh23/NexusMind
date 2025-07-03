@@ -367,4 +367,35 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 3.  在创建 `boto3.client` 时，将这个 `config` 对象传递进去。
 
 **反馈:**
+* **2025-07-06**: **成功获得关键信息**。测试日志显示，即使禁用了重试，第一个也是唯一一个错误就是 `SlowDownRead`。这证实了问题并非由重试逻辑掩盖，而是 `moto` 模拟的 S3 服务本身返回了这个错误。
+
+#### **第二十一步 (最终修复): 为 Boto3 客户端指定默认区域**
+
+**问题:**
+`moto` 模拟的 S3 服务返回 `SlowDownRead` 错误。
+
+**根本原因分析:**
+通过对比，我们发现测试 fixture 中创建的 `boto3` 客户端指定了 `region_name="us-east-1"`，而应用代码 `S3Storage` 中创建的客户端则没有指定区域。在 `moto` 的模拟环境中，缺少区域信息可能会导致不稳定的行为，使其返回一个模拟的节流错误。问题的根源在于应用代码中的 `boto3` 客户端配置不完整。
+
+**解决方案 (最小化修改):**
+修改 `src/nexusmind/storage/s3_storage.py` 文件中的 `S3Storage.__init__` 方法，在传递给 `boto3.client` 的 `client_kwargs` 字典中，硬编码添加一个默认区域，例如 `"region_name": "us-east-1"`。
+
+**反馈:**
+* **2025-07-06**: **失败**。添加 `region_name` 并没有解决问题，错误依旧。
+
+#### **第二十二步 (代码清理): 移除调试用的重试配置**
+
+**问题:**
+`S3Storage` 类中包含用于调试的、已失效的重试配置代码。
+
+**根本原因分析:**
+第二十步中为了诊断 `SlowDownRead` 错误，我们临时在 `S3Storage` 的构造函数中添加了禁用 `boto3` 重试的配置。该调试代码现在已经完成了它的使命，继续保留会使代码库不整洁，并可能引入未知的副作用。
+
+**解决方案 (最小化修改):**
+恢复 `src/nexusmind/storage/s3_storage.py` 文件中的 `S3Storage.__init__` 方法的整洁性：
+1.  移除对 `botocore.config.Config` 的导入。
+2.  删除创建 `retry_config` 对象的代码。
+3.  从 `boto3.client` 的参数中移除 `config` 项。
+
+**反馈:**
 * **2025-07-06**: 待执行。
