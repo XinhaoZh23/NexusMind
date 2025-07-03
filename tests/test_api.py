@@ -11,6 +11,8 @@ from nexusmind.celery_app import app as celery_app
 from main import app, get_core_config
 from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
 from nexusmind.base_config import MinioConfig
+from nexusmind.processor.splitter import Chunk
+from nexusmind.storage.storage_base import StorageBase
 
 
 @pytest.fixture
@@ -105,8 +107,12 @@ def test_async_upload_and_chat(
     
     # Configure the mock processor to use the same mock S3 storage
     processor_mock = MagicMock()
-    processor_mock.process.return_value = [MagicMock()] # Return some mock chunks
-    
+    # Return a real, serializable Chunk object instead of a raw MagicMock
+    mock_chunk = Chunk(
+        content="This is a mock chunk.", page_number=1, file_name="test_doc.txt"
+    )
+    processor_mock.process.return_value = [mock_chunk]
+
     registry_mock = MagicMock()
     registry_mock.get_processor.return_value = processor_mock
 

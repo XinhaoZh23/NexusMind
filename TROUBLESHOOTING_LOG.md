@@ -548,4 +548,22 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 修改 `src/nexusmind/storage/faiss_vector_store.py` 文件中的 `save_to_disk` 方法，将 `chunk.model_dump_json()` 调用更改为 `chunk.model_dump()`。这将确保我们持久化的是字典列表，而不是字符串列表，从而与加载逻辑保持一致。
 
 **反馈:**
+* **2025-07-06**: **已完成**。此修复在逻辑上是正确的，但它暴露了我们的测试模拟策略中的一个深层缺陷。
+
+#### **第三十三步 (最终修复): 修复测试模拟以提供可序列化的数据**
+
+**问题:**
+`test_async_upload_and_chat` 测试失败，API 返回 500 错误，后台日志显示 `TypeError: Object of type MagicMock is not JSON serializable`。
+
+**根本原因分析:**
+问题的最终根源在于 `tests/test_api.py` 中对文件处理器的模拟。该测试将处理器配置为返回一个包含原始 `MagicMock` 对象的列表 (`[MagicMock()]`)。当 `FaissVectorStore` 尝试将这个模拟对象序列化为 JSON 以便存盘时，由于 `MagicMock` 类型本身不是可序列化的，因此导致了 `TypeError`。
+
+**解决方案 (终极修复):**
+修改 `tests/test_api.py` 中的 `test_async_upload_and_chat` 函数。我们将不再让处理器模拟返回一个原始的 `MagicMock`，而是返回一个包含**真实的、可序列化的 `Chunk` Pydantic 模型实例**的列表。
+1.  在测试文件的顶部导入 `Chunk` 模型。
+2.  在测试函数内部，创建一个真实的 `Chunk` 实例，例如 `mock_chunk = Chunk(content="mock", ...)`。
+3.  将 `processor_mock.process.return_value` 的值从 `[MagicMock()]` 修改为 `[mock_chunk]`。
+这将确保所有下游代码都能收到符合其接口预期的、可被正确序列化的真实数据对象。
+
+**反馈:**
 * **2025-07-06**: 待执行。
