@@ -66,13 +66,11 @@ async def get_api_key(
 TASK_STATUSES = {}
 
 
-@lru_cache()
 def get_s3_storage(config: CoreConfig = Depends(get_core_config)) -> S3Storage:
     """Dependency provider for S3Storage."""
     return S3Storage(config)
 
 
-@lru_cache()
 def get_processor_registry(storage: S3Storage = Depends(get_s3_storage)) -> ProcessorRegistry:
     """
     Dependency provider for the ProcessorRegistry.

@@ -248,4 +248,18 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 找到这个被错误缓存的依赖项函数，并移除其 `@lru_cache` 装饰器。
 
 **反馈:**
+* **2025-07-06**: 移除了 `src/nexusmind/config.py` 中 `get_core_config` 函数的缓存，但这并未解决问题，错误依旧。根本原因必定是 `main.py` 中的另一个依赖项函数被不当地缓存了。
+
+#### **第六步：定位并修复 `main.py` 中不当的缓存**
+
+**问题:**
+`test_api.py` 中的 `TypeError` 在上一步修复后仍然存在。
+
+**根本原因分析:**
+通过 `grep` 搜索发现，在 `main.py` 中也存在 `@lru_cache` 的使用。错误追踪信息表明，问题发生在 FastAPI 的依赖注入过程中，当它试图为 API 端点解析依赖时。这强烈暗示 `main.py` 中某个被缓存的依赖提供者函数（dependency provider）在其参数中接收了 `CoreConfig` 对象，导致了缓存失败。
+
+**解决方案:**
+检查 `main.py`，找到所有被 `@lru_cache` 装饰的、且依赖于 `CoreConfig` 的函数，并移除它们的缓存装饰器。
+
+**反馈:**
 * **2025-07-06**: 待执行。
