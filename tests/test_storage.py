@@ -1,6 +1,5 @@
 import tempfile
 
-
 import pytest
 
 from nexusmind.storage.local_storage import LocalStorage
