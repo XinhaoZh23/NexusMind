@@ -11,7 +11,8 @@ from main import app, get_core_config
 @pytest.fixture
 def api_client() -> TestClient:
     """Provides a TestClient instance for API testing."""
-    return TestClient(app)
+    with TestClient(app) as client:
+        yield client
 
 
 # --- Test Fixtures ---
