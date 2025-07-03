@@ -288,4 +288,32 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 3.  在上传成功后，返回 `file_path`。
 
 **反馈:**
+* **2025-07-06**: 已修复。此举解决了 `NotNullViolation` 问题，但暴露了调用 `save` 方法时的一个参数顺序错误。
+
+#### **第十六步：修复 `storage.save` 的参数顺序错误**
+
+**问题:**
+`test_async_upload_and_chat` 测试仍然失败，API 返回 500 错误。日志显示 `botocore.exceptions.EndpointResolutionError: Value (Key) is the wrong type. Must be <class 'str'>.`
+
+**根本原因分析:**
+虽然 `S3Storage.save` 方法已经正确实现，但在 `main.py` 的 `/upload` 端点中调用它时，传递的参数顺序是错误的。代码目前是 `storage.save(content, file.filename)`，而该方法的定义是 `save(self, file_path: str, content: bytes)`。这导致 `bytes` 类型的内容被错误地传递给了 S3 客户端期望为 `str` 类型的 `Key` 参数，而 `str` 类型的文件名被传递给了期望为 `bytes` 类型的 `Body` 参数。
+
+**解决方案 (最小化修改):**
+修改 `main.py` 文件中 `/upload` 端点内对 `storage.save` 的调用，将参数顺序从 `(content, file.filename)` 更正为 `(file.filename, content)`。
+
+**反馈:**
+* **2025-07-06**: 已修复。此举解决了 `EndpointResolutionError`，但暴露出 S3 服务端返回的 `SlowDownRead` 错误，这通常与 `boto3` 的重试策略和测试中使用的模拟 S3 服务（如 moto）的兼容性有关。
+
+#### **第十七步：为 boto3 客户端配置重试策略**
+
+**问题:**
+`test_async_upload_and_chat` 测试仍然失败，API 返回 500 错误。日志显示 `botocore.exceptions.ClientError: An error occurred (SlowDownRead) when calling the PutObject operation (reached max retries: 4): Resource requested is unreadable, please reduce your request rate`。
+
+**根本原因分析:**
+这个 `SlowDownRead` 错误并非真实的 S3 服务端限流，而是 `moto`（一个模拟 AWS 服务的库，经常在测试中使用）的一个已知问题。当 `moto` 模拟 S3 时，它有时会错误地触发 `boto3` 客户端的默认重试机制，导致测试失败。我们需要为测试环境下的 `boto3` 客户端显式地配置一个更合适的重试策略，或者完全禁用它。
+
+**解决方案 (最小化修改):**
+修改 `src/nexusmind/storage/s3_storage.py` 文件，在 `__init__` 方法中初始化 `boto3.client` 时，传入一个自定义的 `Config` 对象，将重试次数（`max_attempts`）设置为 0，从而在测试时禁用重试。
+
+**反馈:**
 * **2025-07-06**: 待执行。

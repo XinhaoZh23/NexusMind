@@ -143,7 +143,7 @@ async def upload_file(
     try:
         # 1. Save file to S3
         content = await file.read()
-        s3_path = storage.save(content, file.filename)
+        s3_path = storage.save(file.filename, content)
         logger.info(f"File '{file.filename}' uploaded to S3 at '{s3_path}'.")
 
         # 2. Create a record in the database
