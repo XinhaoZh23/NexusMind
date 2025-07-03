@@ -79,3 +79,51 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 * **2025-07-03**: 已修复 `tests/test_vector_store.py` 的导入问题。`pytest` 错误总数减少至 1 个。
 
 ---
+
+## 2025-07-05: 从干净状态恢复
+
+### **执行计划**
+
+#### **第一步：修复 `ModuleNotFoundError: No module named 'nexusmind.storage.s3_storage'`**
+
+**问题描述:**
+在将代码库重置到一个干净的基线后，`pytest` 报告了 2 个收集时错误。两个错误均由 `ModuleNotFoundError: No module named 'nexusmind.storage.s3_storage'` 引发。
+
+**根本原因分析:**
+`git reset` 操作将项目恢复到了一个 `src/nexusmind/storage/s3_storage.py` 文件还未被创建的时间点。由于 `main.py` 和 `tests/test_storage.py` 都依赖于导入这个文件，因此文件的缺失导致了致命的 `ModuleNotFoundError`，中断了测试的收集过程。
+
+**解决方案:**
+重新创建 `src/nexusmind/storage/s3_storage.py` 文件，并根据项目的设计文档（`docs/11_PROD_DATA_STORE.md`）为其添加必要的 `S3Storage` 类和 `get_s3_storage` 函数的骨架。
+
+**反馈:**
+* **2025-07-05**: 已修复。此举成功解决了所有 `pytest` 收集时错误，使我们能够进入运行时错误的修复阶段。
+
+#### **第二步：修复 `tests/test_llm_endpoint.py` 中的 `NameError`**
+
+**问题描述:**
+`pytest` 报告在 `tests/test_llm_endpoint.py` 中有 3 个测试在设置阶段就因 `NameError: name 'CoreConfig' is not defined` 而失败。
+
+**根本原因分析:**
+该测试文件中的 `core_config` fixture 直接使用了 `CoreConfig` 类来创建一个实例，但文件顶部忘记了从 `nexusmind.config` 中导入这个类。
+
+**解决方案:**
+在 `tests/test_llm_endpoint.py` 文件顶部添加 `from nexusmind.config import CoreConfig`。
+
+**反馈:**
+* **2025-07-05**: 已修复。此举成功解决了 `tests/test_llm_endpoint.py` 中的 3 个 `ERROR`，`pytest` 的失败总数减少至 5 个。
+
+#### **第三步：修复 `mock.patch` 中的 `ModuleNotFoundError`**
+
+**问题描述:**
+`tests/test_api.py` 中的 `test_async_upload_and_chat` 测试因 `ModuleNotFoundError: No module named 'core'` 而失败。
+
+**根本原因分析:**
+该测试内部使用了 `mock.patch('core.nexusmind.llm.llm_endpoint.litellm')`。`mock.patch` 使用的是字符串形式的路径，它不会被开发工具自动重构。在我们将 `core/` 目录重命名为 `src/` 后，这个硬编码的字符串路径没有被更新，导致了错误。
+
+**解决方案:**
+将 `mock.patch` 的字符串参数从 `core.nexusmind...` 修改为 `nexusmind...`。
+
+**反馈:**
+* **2025-07-05**: 待执行。
+
+---

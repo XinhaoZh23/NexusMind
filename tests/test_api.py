@@ -53,8 +53,8 @@ def mock_embedding() -> list[float]:
 
 
 # --- E2E API Test ---
-@patch("core.nexusmind.llm.llm_endpoint.litellm.completion")
-@patch("core.nexusmind.llm.llm_endpoint.litellm.embedding")
+@patch("nexusmind.llm.llm_endpoint.litellm.completion")
+@patch("nexusmind.llm.llm_endpoint.litellm.embedding")
 def test_async_upload_and_chat(
     mock_embedding_call,
     mock_completion_call,

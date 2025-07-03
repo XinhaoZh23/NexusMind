@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from nexusmind.config import CoreConfig
 from nexusmind.llm.llm_endpoint import LLMEndpoint
 
 
