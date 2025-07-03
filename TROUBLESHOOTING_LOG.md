@@ -262,4 +262,19 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 检查 `main.py`，找到所有被 `@lru_cache` 装饰的、且依赖于 `CoreConfig` 的函数，并移除它们的缓存装饰器。
 
 **反馈:**
+* **2025-07-06**: 已修复。此举成功解决了 `TypeError`，但暴露了新的 `AttributeError: 'CoreConfig' object has no attribute 'access_key'`。
+
+#### **第七步：修复 `S3Storage` 初始化时的 `AttributeError`**
+
+**问题:**
+`test_api.py` 测试失败，因为在初始化 `S3Storage` 时，`CoreConfig` 对象上缺少 `access_key` 属性。
+
+**根本原因分析:**
+在 `main.py` 的 `get_s3_storage` 依赖提供者中，我们将整个 `CoreConfig` 实例传递给了 `S3Storage`。而 `S3Storage` 的构造函数试图直接从这个 `CoreConfig` 实例中访问 S3 相关的配置（如 `access_key`），但这些配置实际上是嵌套在 `config.minio` 这个 `MinioConfig` 对象中的。
+
+**解决方案:**
+1.  修改 `main.py` 中的 `get_s3_storage` 函数，使其在调用 `S3Storage` 时，传递正确的、嵌套的配置对象 `config.minio`。
+2.  修改 `src/nexusmind/storage/s3_storage.py` 中 `S3Storage` 的构造函数，明确其接收的参数类型是 `MinioConfig`。
+
+**反馈:**
 * **2025-07-06**: 待执行。

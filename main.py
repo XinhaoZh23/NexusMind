@@ -68,7 +68,7 @@ TASK_STATUSES = {}
 
 def get_s3_storage(config: CoreConfig = Depends(get_core_config)) -> S3Storage:
     """Dependency provider for S3Storage."""
-    return S3Storage(config)
+    return S3Storage(config.minio)
 
 
 def get_processor_registry(storage: S3Storage = Depends(get_s3_storage)) -> ProcessorRegistry:
