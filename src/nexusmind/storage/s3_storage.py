@@ -33,7 +33,15 @@ class S3Storage(StorageBase):
                 raise
 
     def save(self, file_path: str, content: bytes) -> None:
-        pass
+        try:
+            self.s3_client.put_object(
+                Bucket=self.config.bucket, Key=file_path, Body=content
+            )
+            logger.info(f"File '{file_path}' saved to S3 bucket '{self.config.bucket}'.")
+            return file_path
+        except ClientError as e:
+            logger.error(f"Failed to save file '{file_path}' to S3: {e}")
+            raise
 
     def get(self, file_path: str) -> bytes:
         pass

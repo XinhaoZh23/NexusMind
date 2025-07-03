@@ -271,4 +271,21 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 这会绕过错误的依赖注入调用，同时保持原有功能不变。
 
 **反馈:**
+* **2025-07-06**: 已修复。此举成功解决了应用启动过程中的 `AttributeError`，使 `test_api.py` 中的 2 个测试转为通过，并将失败推进到了 `/upload` 端点的核心逻辑中。
+
+#### **第十五步：在 S3Storage 中实现文件保存逻辑**
+
+**问题:**
+`test_async_upload_and_chat` 测试失败，API 返回 500 错误，日志显示 `NotNullViolation`，因为 `s3_path` 为空。
+
+**根本原因分析:**
+在 `/upload` 端点中，`storage.save(content, file.filename)` 被调用，但它返回了 `None`。这是因为 `src/nexusmind/storage/s3_storage.py` 文件中的 `save` 方法只是一个空的 `pass` 占位符，没有实际的文件上传逻辑，也没有返回值。
+
+**解决方案 (最小化修改):**
+修改 `src/nexusmind/storage/s3_storage.py` 文件中的 `save` 方法：
+1.  调用 `self.s3_client.put_object()` 将 `content` 上传到 S3。
+2.  使用 `self.config.bucket`作为存储桶名称，`file_path` 作为对象的键（Key）。
+3.  在上传成功后，返回 `file_path`。
+
+**反馈:**
 * **2025-07-06**: 待执行。
