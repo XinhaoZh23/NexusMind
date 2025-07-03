@@ -288,7 +288,7 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 3.  在上传成功后，返回 `file_path`。
 
 **反馈:**
-* **2025-07-06**: 已修复。此举解决了 `NotNullViolation` 问题，但暴露了调用 `save` 方法时的一个参数顺序错误。
+* **2025-07-06**: 已修复。此举解决了 `NotNullViolation` 问题，但暴露出调用 `save` 方法时的一个参数顺序错误。
 
 #### **第十六步：修复 `storage.save` 的参数顺序错误**
 
@@ -304,16 +304,46 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 **反馈:**
 * **2025-07-06**: 已修复。此举解决了 `EndpointResolutionError`，但暴露出 S3 服务端返回的 `SlowDownRead` 错误，这通常与 `boto3` 的重试策略和测试中使用的模拟 S3 服务（如 moto）的兼容性有关。
 
-#### **第十七步：为 boto3 客户端配置重试策略**
+#### **第十七步 (修正)：使用 `moto` 模拟 S3 服务**
 
 **问题:**
-`test_async_upload_and_chat` 测试仍然失败，API 返回 500 错误。日志显示 `botocore.exceptions.ClientError: An error occurred (SlowDownRead) when calling the PutObject operation (reached max retries: 4): Resource requested is unreadable, please reduce your request rate`。
+`test_async_upload_and_chat` 测试仍然失败，API 返回 500 错误，日志显示 `botocore.exceptions.ClientError: An error occurred (SlowDownRead)`。
 
 **根本原因分析:**
-这个 `SlowDownRead` 错误并非真实的 S3 服务端限流，而是 `moto`（一个模拟 AWS 服务的库，经常在测试中使用）的一个已知问题。当 `moto` 模拟 S3 时，它有时会错误地触发 `boto3` 客户端的默认重试机制，导致测试失败。我们需要为测试环境下的 `boto3` 客户端显式地配置一个更合适的重试策略，或者完全禁用它。
+此前的所有修复都只是在处理表面症状。问题的核心在于，依赖于 S3 存储的 API 测试在运行时，没有一个正常工作的、被模拟的 S3 环境。`boto3` 客户端试图连接到配置中的 `http://minio:9000`，但在 `pytest` 的执行环境中，这个地址是不可访问的，并且即使可访问，依赖一个外部的、正在运行的服务也会让单元测试变得脆弱和缓慢。正确的做法是使用 `moto` 库在测试期间完全模拟 S3 的行为。
 
-**解决方案 (最小化修改):**
-修改 `src/nexusmind/storage/s3_storage.py` 文件，在 `__init__` 方法中初始化 `boto3.client` 时，传入一个自定义的 `Config` 对象，将重试次数（`max_attempts`）设置为 0，从而在测试时禁用重试。
+**解决方案:**
+我们将分两步来正确地集成 `moto`:
+1.  **安装依赖**: 将 `moto` 添加到项目的开发依赖中。
+2.  **创建模拟 Fixture**: 在 `tests/test_api.py` 中，创建一个新的 `pytest` fixture。这个 fixture 将使用 `moto` 来模拟 S3，并在模拟环境中预先创建测试所需的 S3 存储桶（bucket）。
+3.  **应用 Fixture**: 将这个新的 fixture 应用到 `test_async_upload_and_chat` 测试函数上，确保在该测试运行期间所有的 `boto3` 调用都被 `moto` 拦截和模拟。
+
+**子步骤 3.1: 修复 `moto` 的导入错误**
+
+**问题:**
+在 `tests/test_api.py` 中添加 `from moto import mock_s3` 后，`pytest` 在收集测试阶段就因 `ImportError: cannot import name 'mock_s3' from 'moto'` 而失败。
+
+**根本原因分析:**
+我们使用的是 `moto` v5+，其包结构发生了变化。`mock_s3` 不再能从顶层 `moto` 包导入，而必须从其特定的子模块 `moto.s3` 中导入。
+
+**解决方案(最小化修改):**
+将 `tests/test_api.py` 中的 `from moto import mock_s3` 修改为 `from moto.s3 import mock_s3`。
+
+**反馈:**
+* **2025-07-06**: **失败**。此修改依然导致 `ImportError`。这表明我对 `moto` v5+ 新的接口规范的理解是完全错误的，`mock_s3` 也不在 `moto.s3` 模块下。
+
+**子步骤 3.2: 查阅文档并使用正确的 `moto` 装饰器**
+
+**问题:**
+`pytest` 仍然因为 `ImportError` 而无法收集测试。
+
+**根本原因分析:**
+经过两次失败的尝试，根本原因被确认为：对 `moto` v5+ 版本中装饰器和上下文管理器的正确导入路径和用法缺乏准确的了解。连续的猜测导致了进度停滞。
+
+**解决方案(最小化修改):**
+我们将停止猜测，并通过网络搜索查阅 `moto` 的官方文档来确定正确的用法。
+1.  **调查**: 使用网络搜索找到 `moto` v5+ 中用于模拟 S3 的 pytest 装饰器的正确导入路径。
+2.  **修复**: 将 `tests/test_api.py` 中错误的导入语句和装饰器用法，替换为从文档中查到的正确用法。
 
 **反馈:**
 * **2025-07-06**: 待执行。

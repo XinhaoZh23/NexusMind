@@ -1,8 +1,11 @@
 import uuid
+import os
+import boto3
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from moto import mock_aws
 
 from nexusmind.celery_app import app as celery_app
 from main import app, get_core_config
@@ -41,10 +44,29 @@ def settings(monkeypatch):
     get_core_config.cache_clear()
 
 
-# --- Test Data ---
 @pytest.fixture
 def test_txt_content() -> str:
     return "The sky is blue and the grass is green."
+
+
+@pytest.fixture
+def mock_s3_environment(settings):
+    """
+    Creates a mock S3 environment for testing.
+    This fixture ensures that S3 calls are intercepted by moto.
+    """
+    # Moto uses these env vars to mock the AWS credentials
+    os.environ["AWS_ACCESS_KEY_ID"] = "testing"
+    os.environ["AWS_SECRET_ACCESS_KEY"] = "testing"
+    os.environ["AWS_SECURITY_TOKEN"] = "testing"
+    os.environ["AWS_SESSION_TOKEN"] = "testing"
+    os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # Default region for moto
+
+    with mock_aws():
+        # Create a mock bucket for the test
+        s3 = boto3.client("s3", region_name="us-east-1")
+        s3.create_bucket(Bucket="test-bucket")
+        yield
 
 
 @pytest.fixture
@@ -61,7 +83,7 @@ def test_async_upload_and_chat(
     mock_completion_call,
     test_txt_content,
     mock_embedding,
-    settings,
+    mock_s3_environment,
     api_client,
 ):
     """
