@@ -1,10 +1,10 @@
 [tool.poetry]
 name = "nexusmind"
 version = "0.1.0"
-description = "NEXUSMIND - A RAG system development project."
-authors = ["Your Name <you@example.com>"]
+description = "A sophisticated, open-source RAG (Retrieval-Augmented Generation) platform designed for developers and researchers to build, experiment with, and deploy advanced AI-powered applications."
+authors = ["NEXUSMIND Team <team@nexusmind.ai>"]
 readme = "README.md"
-packages = [{include = "core"}]
+packages = [{include = "nexusmind", from = "core"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9"
