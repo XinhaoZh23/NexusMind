@@ -304,64 +304,16 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 **反馈:**
 * **2025-07-06**: 已修复。此举解决了 `EndpointResolutionError`，但暴露出 S3 服务端返回的 `SlowDownRead` 错误，这通常与 `boto3` 的重试策略和测试中使用的模拟 S3 服务（如 moto）的兼容性有关。
 
-#### **第十七步 (修正)：使用 `moto` 模拟 S3 服务**
+#### **第十七步 (重置 & 最终修复): 修正应用代码以支持 `moto` 模拟**
 
-**问题:**
-`test_async_upload_and_chat` 测试仍然失败，API 返回 500 错误，日志显示 `botocore.exceptions.ClientError: An error occurred (SlowDownRead)`。
+**背景:**
+此前所有在 `tests/test_api.py` 文件中尝试通过 fixture 和环境变量来修复 `moto` 模拟的方案均告失败，并导致了测试前回退。用户已通过 `git reset` 将测试文件恢复到稳定状态。
 
-**根本原因分析:**
-此前的所有修复都只是在处理表面症状。问题的核心在于，依赖于 S3 存储的 API 测试在运行时，没有一个正常工作的、被模拟的 S3 环境。`boto3` 客户端试图连接到配置中的 `http://minio:9000`，但在 `pytest` 的执行环境中，这个地址是不可访问的，并且即使可访问，依赖一个外部的、正在运行的服务也会让单元测试变得脆弱和缓慢。正确的做法是使用 `moto` 库在测试期间完全模拟 S3 的行为。
+**最终根本原因分析:**
+问题的根源不在于测试代码，而在于应用代码本身的设计使其难以被测试。`src/nexusmind/storage/s3_storage.py` 在初始化 `S3Storage` 类时，**无条件地** 将 `endpoint_url` 传递给了 `boto3.client`。这个操作的优先级高于 `moto` 的模拟机制，导致 `boto3` 客户端总是试图连接到一个真实的 HTTP 端点，而不是 `moto` 的虚拟后端，从而使所有模拟都失败了。
 
-**解决方案:**
-我们将分两步来正确地集成 `moto`:
-1.  **安装依赖**: 将 `moto` 添加到项目的开发依赖中。
-2.  **创建模拟 Fixture**: 在 `tests/test_api.py` 中，创建一个新的 `pytest` fixture。这个 fixture 将使用 `moto` 来模拟 S3，并在模拟环境中预先创建测试所需的 S3 存储桶（bucket）。
-3.  **应用 Fixture**: 将这个新的 fixture 应用到 `test_async_upload_and_chat` 测试函数上，确保在该测试运行期间所有的 `boto3` 调用都被 `moto` 拦截和模拟。
-
-**子步骤 3.1: 修复 `moto` 的导入错误**
-
-**问题:**
-在 `tests/test_api.py` 中添加 `from moto import mock_s3` 后，`pytest` 在收集测试阶段就因 `ImportError: cannot import name 'mock_s3' from 'moto'` 而失败。
-
-**根本原因分析:**
-我们使用的是 `moto` v5+，其包结构发生了变化。`mock_s3` 不再能从顶层 `moto` 包导入，而必须从其特定的子模块 `moto.s3` 中导入。
-
-**解决方案(最小化修改):**
-将 `tests/test_api.py` 中的 `from moto import mock_s3` 修改为 `from moto.s3 import mock_s3`。
-
-**反馈:**
-* **2025-07-06**: **成功**。此修改成功解决了 `ImportError`，使 `pytest` 能够进入测试执行阶段。但暴露了一个新的、在测试设置阶段发生的错误。
-
-**子步骤 3.2: 查阅文档并使用正确的 `moto` 装饰器**
-
-**问题:**
-`pytest` 仍然因为 `ImportError` 而无法收集测试。
-
-**根本原因分析:**
-经过两次失败的尝试，根本原因被确认为：对 `moto` v5+ 版本中装饰器和上下文管理器的正确导入路径和用法缺乏准确的了解。连续的猜测导致了进度停滞。
-
-**解决方案(最小化修改):**
-我们将停止猜测，并通过网络搜索查阅 `moto` 的官方文档来确定正确的用法。
-1.  **调查**: 使用网络搜索找到 `moto` v5+ 中用于模拟 S3 的 pytest 装饰器的正确导入路径。
-2.  **修复**: 将 `tests/test_api.py` 中错误的导入语句和装饰器用法，替换为从文档中查到的正确用法。
-
-**反馈:**
-* **2025-07-06**: **成功**。此修改成功解决了 `ImportError`，使 `pytest` 能够进入测试执行阶段。但暴露了一个新的、在测试设置阶段发生的错误。
-
-**子步骤 3.3: 解决 `moto` 与自定义 endpoint 的冲突**
-
-**问题:**
-`test_async_upload_and_chat` 测试在设置 `mock_s3_environment` fixture 时失败，错误为 `botocore.exceptions.ClientError: An error occurred (XMinioIAMNotInitialized) ...`。
-
-**根本原因分析:**
-这个错误 `XMinioIAMNotInitialized` 表明 `boto3` 客户端仍然在尝试连接到一个真实的 MinIO 服务，而不是使用 `moto` 提供的模拟环境。其根本原因在于：
-1.  `settings` fixture 设置了 `AWS_ENDPOINT_URL` 环境变量。
-2.  `boto3` 客户端会优先使用这个环境变量来决定连接的目标地址。
-3.  因此，即使代码运行在 `with mock_aws():` 的上下文中，`boto3` 仍然绕过了 `moto` 的模拟，直接去连接环境变量中指定的 MinIO 地址，导致了失败。
-
-**解决方案(最小化修改):**
-我们需要阻止 `boto3` 在 `moto` 的模拟环境中使用自定义的 endpoint。最直接的方法是在进入 `mock_aws` 上下文之前，临时移除这个环境变量。
-修改 `tests/test_api.py` 中的 `mock_s3_environment` fixture，在 `with mock_aws():` 语句之前，删除 `AWS_ENDPOINT_URL` 环境变量。
+**解决方案 (最小化修改):**
+修改 `src/nexusmind/storage/s3_storage.py` 中 `S3Storage` 类的 `__init__` 方法。我们将动态地构建传递给 `boto3.client` 的参数。只有当 `self.config.endpoint` 确实存在时，我们才将 `endpoint_url` 这个键值对添加到参数中。这样，在测试环境中，当 `moto` 处于活动状态且我们不提供 endpoint URL 时，`boto3` 客户端将能被 `moto` 正确地拦截和模拟。
 
 **反馈:**
 * **2025-07-06**: 待执行。

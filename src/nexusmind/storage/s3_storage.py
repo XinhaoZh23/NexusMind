@@ -1,7 +1,6 @@
 import logging
 
 import boto3
-from botocore.config import Config
 from botocore.exceptions import ClientError
 
 from ..base_config import MinioConfig
@@ -13,20 +12,17 @@ logger = logging.getLogger(__name__)
 class S3Storage(StorageBase):
     def __init__(self, config: MinioConfig):
         self.config = config
-        # Configure retry strategy
-        retry_config = Config(
-            retries={
-                'max_attempts': 0,
-                'mode': 'standard'
-            }
-        )
-        self.s3_client = boto3.client(
-            "s3",
-            aws_access_key_id=self.config.access_key,
-            aws_secret_access_key=self.config.secret_key.get_secret_value(),
-            endpoint_url=self.config.endpoint,
-            config=retry_config,
-        )
+
+        client_kwargs = {
+            "aws_access_key_id": self.config.access_key,
+            "aws_secret_access_key": self.config.secret_key.get_secret_value(),
+        }
+
+        # Conditionally add endpoint_url for MinIO/LocalStack
+        if self.config.endpoint:
+            client_kwargs["endpoint_url"] = self.config.endpoint
+
+        self.s3_client = boto3.client("s3", **client_kwargs)
         self._create_bucket_if_not_exists()
 
     def _create_bucket_if_not_exists(self):
