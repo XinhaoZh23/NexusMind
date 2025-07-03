@@ -1,5 +1,6 @@
-import sys
 import os
+import sys
+
 from loguru import logger
 
 # Default log level to INFO if not set in environment
@@ -14,10 +15,10 @@ logger.add(
     sys.stderr,
     level=log_level,
     serialize=True,  # This is the key for structured, JSON logging
-    enqueue=True,    # Make logging asynchronous, non-blocking
+    enqueue=True,  # Make logging asynchronous, non-blocking
     backtrace=True,  # Show the full stack trace on exceptions
-    diagnose=True,   # Add exception details for debugging
+    diagnose=True,  # Add exception details for debugging
 )
 
 # Export the configured logger for use in other modules
-__all__ = ["logger"] 
+__all__ = ["logger"]

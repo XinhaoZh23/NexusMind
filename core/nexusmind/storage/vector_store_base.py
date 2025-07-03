@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List
+
 from core.nexusmind.processor.splitter import Chunk
 
 
@@ -21,4 +22,4 @@ class VectorStoreBase(ABC):
         """
         Perform a similarity search against the vector store.
         """
-        pass 
+        pass

@@ -15,4 +15,4 @@ class ProcessorBase(ABC):
         """
         Process a file and return a list of chunks.
         """
-        pass 
+        pass

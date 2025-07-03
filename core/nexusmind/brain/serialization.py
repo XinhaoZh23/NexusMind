@@ -1,7 +1,6 @@
 import json
 import uuid
 from pathlib import Path
-from typing import Type
 
 from core.nexusmind.brain.brain import Brain
 
@@ -40,4 +39,4 @@ def load_brain(brain_id: uuid.UUID) -> Brain:
 
     with open(path, "r") as f:
         data = json.load(f)
-        return Brain(**data) 
+        return Brain(**data)

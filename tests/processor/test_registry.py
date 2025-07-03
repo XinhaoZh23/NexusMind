@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import Mock
+
+import pytest
 
 from core.nexusmind.processor.processor_base import ProcessorBase
 from core.nexusmind.processor.registry import ProcessorRegistry
@@ -29,4 +30,4 @@ def test_get_unregistered_processor():
     registry = ProcessorRegistry()
     with pytest.raises(ValueError) as excinfo:
         registry.get_processor("archive.zip")
-    assert "No processor registered for file type '.zip'" in str(excinfo.value) 
+    assert "No processor registered for file type '.zip'" in str(excinfo.value)

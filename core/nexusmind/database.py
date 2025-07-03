@@ -1,4 +1,5 @@
-from sqlmodel import create_engine, Session
+from sqlmodel import Session, create_engine
+
 from core.nexusmind.config import CoreConfig
 from core.nexusmind.logger import logger
 
@@ -15,6 +16,7 @@ except Exception as e:
     logger.error(f"Failed to create database engine: {e}")
     # Exit or handle gracefully if the database connection is critical at startup
     raise
+
 
 def get_session():
     """
@@ -36,7 +38,6 @@ def create_db_and_tables():
     logger.info("Creating database tables...")
     # This import is placed here to ensure all models are loaded
     # before we try to create the tables.
-    from core.nexusmind.models import files
     from sqlmodel import SQLModel
 
     try:
@@ -44,4 +45,4 @@ def create_db_and_tables():
         logger.info("Database tables created successfully.")
     except Exception as e:
         logger.error(f"Failed to create database tables: {e}")
-        raise 
+        raise

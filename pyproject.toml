@@ -38,3 +38,20 @@ pythonpath = [
   "."
 ]
 norecursedirs = ["postgres_data", "minio_data", "redis_data", ".venv", "storage"]
+
+[tool.black]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | postgres_data
+  | minio_data
+  | redis_data
+)/
+'''
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 88

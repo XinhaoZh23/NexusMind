@@ -1,31 +1,28 @@
 import uuid
 from functools import lru_cache
-from fastapi import (
-    FastAPI, UploadFile, File, Form, HTTPException, 
-    Depends, Security
-)
-from fastapi.responses import JSONResponse
+from typing import Dict
+
+import uvicorn
+from celery.result import AsyncResult
+from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, UploadFile
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
-from typing import Dict
 from sqlalchemy.orm import Session
 
 from core.nexusmind.brain.brain import Brain
-from core.nexusmind.rag.nexus_rag import NexusRAG
-from core.nexusmind.files.file import NexusFile
-from core.nexusmind.processor.registry import ProcessorRegistry
-from core.nexusmind.processor.implementations.simple_txt_processor import SimpleTxtProcessor
-from core.nexusmind.storage.local_storage import LocalStorage
-from core.nexusmind.storage.s3_storage import S3Storage
-from core.nexusmind.database import get_session, create_db_and_tables
-from core.nexusmind.models.files import File as FileModel, FileStatusEnum
-from core.nexusmind.logger import logger
-from core.nexusmind.config import CoreConfig
-from core.nexusmind.tasks import process_file
 from core.nexusmind.celery_app import app as celery_app
-from celery.result import AsyncResult
-
-import uvicorn
+from core.nexusmind.config import CoreConfig
+from core.nexusmind.database import create_db_and_tables, get_session
+from core.nexusmind.logger import logger
+from core.nexusmind.models.files import File as FileModel
+from core.nexusmind.models.files import FileStatusEnum
+from core.nexusmind.processor.implementations.simple_txt_processor import (
+    SimpleTxtProcessor,
+)
+from core.nexusmind.processor.registry import ProcessorRegistry
+from core.nexusmind.rag.nexus_rag import NexusRAG
+from core.nexusmind.storage.s3_storage import S3Storage
+from core.nexusmind.tasks import process_file
 
 # --- Security and App Initialization ---
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=True)
@@ -36,6 +33,7 @@ app = FastAPI(
     version="0.1.0",
 )
 
+
 @app.on_event("startup")
 def on_startup():
     # Create database tables if they don't exist
@@ -44,10 +42,12 @@ def on_startup():
     s3_storage = get_s3_storage()
     s3_storage.create_bucket_if_not_exists()
 
+
 # --- Configuration and Dependency Injection ---
 @lru_cache
 def get_core_config() -> CoreConfig:
     return CoreConfig()
+
 
 async def get_api_key(
     api_key_header: str = Security(API_KEY_HEADER),
@@ -58,21 +58,24 @@ async def get_api_key(
         logger.warning("API keys are not configured. Endpoint is unprotected.")
         return api_key_header
     if api_key_header not in config.api_keys:
-        raise HTTPException(
-            status_code=403, detail="Could not validate credentials"
-        )
+        raise HTTPException(status_code=403, detail="Could not validate credentials")
     return api_key_header
+
 
 # In-memory storage for task statuses
 TASK_STATUSES = {}
+
 
 @lru_cache
 def get_s3_storage() -> S3Storage:
     """Dependency provider for S3Storage."""
     return S3Storage()
 
+
 @lru_cache
-def get_processor_registry(storage: S3Storage = Depends(get_s3_storage)) -> ProcessorRegistry:
+def get_processor_registry(
+    storage: S3Storage = Depends(get_s3_storage),
+) -> ProcessorRegistry:
     """
     Dependency provider for the ProcessorRegistry.
     It creates and configures a singleton instance of the registry.
@@ -83,6 +86,7 @@ def get_processor_registry(storage: S3Storage = Depends(get_s3_storage)) -> Proc
     registry.register_processor(".txt", simple_txt_processor)
     logger.info("Processor registry configured.")
     return registry
+
 
 # --- Helper Functions ---
 def get_or_create_brain(brain_id: uuid.UUID) -> Brain:
@@ -108,19 +112,23 @@ def get_or_create_brain(brain_id: uuid.UUID) -> Brain:
         logger.info(f"Saved new brain with ID: {brain_id}")
         return brain
 
+
 # --- API Request Models ---
 class ChatRequest(BaseModel):
     question: str
     brain_id: uuid.UUID
 
+
 class UploadResponse(BaseModel):
     task_id: str
     message: str
+
 
 class StatusResponse(BaseModel):
     task_id: str
     status: str
     result: Dict | str | None
+
 
 # --- API Endpoints ---
 @app.post("/upload", dependencies=[Depends(get_api_key)], response_model=UploadResponse)
@@ -155,12 +163,14 @@ async def upload_file(
         task = process_file.delay(str(db_file.id))
 
         return UploadResponse(
-            task_id=task.id,
-            message="File upload accepted and is being processed."
+            task_id=task.id, message="File upload accepted and is being processed."
         )
     except Exception as e:
-        logger.error(f"Failed to queue file processing for {file.filename}: {e}", exc_info=True)
+        logger.error(
+            f"Failed to queue file processing for {file.filename}: {e}", exc_info=True
+        )
         raise HTTPException(status_code=500, detail="Failed to start file processing.")
+
 
 @app.get("/upload/status/{task_id}", response_model=StatusResponse)
 async def get_upload_status(task_id: str, session: Session = Depends(get_session)):
@@ -175,7 +185,7 @@ async def get_upload_status(task_id: str, session: Session = Depends(get_session
 
     if task_result.failed():
         result = str(task_result.result)
-    
+
     # Optional: You could also query your `FileModel` here using the task_id
     # if you were to store it, to provide even more detailed status.
 
@@ -185,6 +195,7 @@ async def get_upload_status(task_id: str, session: Session = Depends(get_session
         result=result,
     )
 
+
 @app.post("/chat", dependencies=[Depends(get_api_key)])
 async def chat_with_brain(request: ChatRequest):
     """
@@ -193,15 +204,18 @@ async def chat_with_brain(request: ChatRequest):
     try:
         brain = Brain.load(request.brain_id)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Brain with ID {request.brain_id} not found.")
+        raise HTTPException(
+            status_code=404, detail=f"Brain with ID {request.brain_id} not found."
+        )
 
     # Instantiate RAG with the loaded brain
     rag = NexusRAG(brain=brain)
 
     # Generate an answer
     answer = rag.generate_answer(request.question)
-    
+
     return {"answer": answer}
 
+
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000) 
+    uvicorn.run(app, host="0.0.0.0", port=8000)

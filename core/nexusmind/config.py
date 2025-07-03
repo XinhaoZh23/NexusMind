@@ -1,5 +1,6 @@
-from core.nexusmind.base_config import BaseConfig
 from pydantic_settings import SettingsConfigDict
+
+from core.nexusmind.base_config import BaseConfig
 
 
 class CoreConfig(BaseConfig):
@@ -41,4 +42,4 @@ class CoreConfig(BaseConfig):
     # The base path for local file storage.
     storage_base_path: str = "storage"
 
-    api_keys: list[str] = [] 
+    api_keys: list[str] = []

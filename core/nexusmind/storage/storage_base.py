@@ -33,4 +33,4 @@ class StorageBase(ABC):
         """
         Check if a file exists at a specified path.
         """
-        pass 
+        pass

@@ -1,5 +1,7 @@
+from unittest.mock import Mock, patch
+
 import pytest
-from unittest.mock import patch, Mock
+
 from core.nexusmind.config import CoreConfig
 from core.nexusmind.llm.llm_endpoint import LLMEndpoint
 
@@ -40,7 +42,7 @@ def test_get_chat_completion(mock_completion, core_config):
         model="test-model",
         messages=[{"role": "user", "content": "Hello"}],
         temperature=0.5,
-        max_tokens=100
+        max_tokens=100,
     )
     assert response == "This is a test response."
 
@@ -52,13 +54,7 @@ def test_get_embedding(mock_embedding, core_config):
     """
     # Arrange
     # The response from litellm.embedding is dict-like, so we mock it as a dict.
-    mock_response = {
-        "data": [
-            {
-                "embedding": [0.1, 0.2, 0.3]
-            }
-        ]
-    }
+    mock_response = {"data": [{"embedding": [0.1, 0.2, 0.3]}]}
     mock_embedding.return_value = mock_response
 
     llm_endpoint = LLMEndpoint(
@@ -72,8 +68,7 @@ def test_get_embedding(mock_embedding, core_config):
 
     # Assert
     mock_embedding.assert_called_once_with(
-        model="text-embedding-ada-002",
-        input=["test text"]
+        model="text-embedding-ada-002", input=["test text"]
     )
     assert embedding == [0.1, 0.2, 0.3]
 
@@ -96,4 +91,4 @@ def test_get_chat_completion_error_handling(mock_completion, core_config):
     )
 
     # Assert
-    assert response == "" 
+    assert response == ""

@@ -1,4 +1,3 @@
-import uuid
 from core.nexusmind.brain.brain import Brain
 from core.nexusmind.brain.serialization import BRAIN_STORAGE_PATH
 
@@ -36,6 +35,7 @@ def test_save_and_load_brain(tmp_path):
     try:
         # Ugly but effective for testing: modify the global path
         import core.nexusmind.brain.serialization
+
         core.nexusmind.brain.serialization.BRAIN_STORAGE_PATH = tmp_path
 
         # 1. Create and modify a brain instance
@@ -64,4 +64,5 @@ def test_save_and_load_brain(tmp_path):
     finally:
         # Restore the original path to avoid side effects
         import core.nexusmind.brain.serialization
-        core.nexusmind.brain.serialization.BRAIN_STORAGE_PATH = original_path 
+
+        core.nexusmind.brain.serialization.BRAIN_STORAGE_PATH = original_path

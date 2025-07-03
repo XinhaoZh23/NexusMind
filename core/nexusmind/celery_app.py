@@ -1,4 +1,5 @@
 from celery import Celery
+
 from core.nexusmind.config import CoreConfig
 
 # Load application configuration
@@ -18,4 +19,4 @@ app.conf.update(
 )
 
 if __name__ == "__main__":
-    app.start() 
+    app.start()

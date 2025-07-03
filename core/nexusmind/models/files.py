@@ -1,5 +1,5 @@
-import uuid
 import enum
+import uuid
 from datetime import datetime
 from typing import Optional
 
@@ -35,4 +35,4 @@ class File(SQLModel, table=True):
 
     class Config:
         # Pydantic-specific configuration
-        arbitrary_types_allowed = True 
+        arbitrary_types_allowed = True
