@@ -106,12 +106,12 @@ class FaissVectorStore(VectorStoreBase):
         # Save chunk mapping
         chunk_path = self._get_chunk_path()
         with open(chunk_path, "w") as f:
-            json.dump(
-                [chunk.model_dump() for chunk in self.index_to_chunk],
-                f,
-                indent=4,
-                default=str,
-            )
+            # Explicitly dump each chunk to its JSON string representation.
+            # This is more robust than dumping dicts with a default handler.
+            chunk_json_list = [
+                chunk.model_dump_json() for chunk in self.index_to_chunk
+            ]
+            json.dump(chunk_json_list, f, indent=4)
 
         logger.info(f"Saved {len(self.index_to_chunk)} chunk metadata to {chunk_path}")
 
@@ -128,5 +128,10 @@ class FaissVectorStore(VectorStoreBase):
         chunk_path = self._get_chunk_path()
         if chunk_path.exists():
             with open(chunk_path, "r") as f:
-                chunk_data = json.load(f)
-                self.index_to_chunk = [Chunk(**data) for data in chunk_data]
+                chunk_json_list = json.load(f)
+                # Each item in the list is a JSON string, so we need to parse it
+                # back into a Chunk object using Pydantic's validator.
+                self.index_to_chunk = [
+                    Chunk.model_validate_json(data_str)
+                    for data_str in chunk_json_list
+                ]

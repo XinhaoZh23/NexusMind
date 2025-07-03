@@ -526,10 +526,26 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 **根本原因分析:**
 所有应用层面的 Bug 都已修复。Celery 任务成功执行完毕后，试图将其成功状态写入 Redis。但 Docker 中的 Redis 服务因无法将快照写入磁盘而触发了一个安全配置 (`stop-writes-on-bgsave-error`)，导致其拒绝了 Celery 的写入请求。这是一个基础设施配置问题，而非 Python 代码问题。
 
-**解决方案 (配置修复):**
-对于测试环境，我们不需要 Redis 的持久化功能。最简单的解决方案是在 `docker-compose.yml` 中修改 Redis 服务的启动命令，明确地禁用这个会引起问题的功能。
+**解决方案 (最终配置修复):**
+对于测试环境，我们完全不需要 Redis 的数据持久化功能。之前尝试禁用"写错误检查"的方案治标不治本。最终的解决方案是，通过修改 `docker-compose.yml` 中的 `redis` 服务启动命令，来**彻底禁用所有持久化机制 (RDB 和 AOF)**，从而从根源上避免磁盘写入问题。
 1.  找到 `docker-compose.yml` 文件中的 `redis` 服务。
-2.  为其添加一个 `command` 指令，该指令会覆盖 Redis 默认的启动命令，并禁用 RDB 快照的后台保存错误检查。
+2.  将其 `command` 指令修改为 `redis-server --save "" --appendonly no`。
+
+**反馈:**
+* **2025-07-06**: **已完成**。此修复彻底解决了 Redis 的基础设施问题，使测试能够完整地执行应用逻辑，并最终暴露出最后一个序列化相关的 Bug。
+
+#### **第三十二步 (最终 Bug): 修复 FaissVectorStore 的序列化/反序列化逻辑**
+
+**问题:**
+`test_async_upload_and_chat` 测试失败，在调用 `/chat` 端点时，后台报告 `TypeError: Chunk() argument after ** must be a mapping, not str`。
+
+**根本原因分析:**
+问题的根源在于 `src/nexusmind/storage/faiss_vector_store.py` 中的存取逻辑不匹配。
+*   **保存时**: `save_to_disk` 方法在序列化 `Chunk` 对象列表时，错误地使用了 `chunk.model_dump_json()`，这将每个 `Chunk` 对象转换成了一个 **JSON 字符串**。
+*   **加载时**: `_load_from_disk` 方法在反序列化时，却试图将这些字符串当作**字典**来处理（`Chunk(**data)`），这自然会导致 `TypeError`。
+
+**解决方案 (最小化修改):**
+修改 `src/nexusmind/storage/faiss_vector_store.py` 文件中的 `save_to_disk` 方法，将 `chunk.model_dump_json()` 调用更改为 `chunk.model_dump()`。这将确保我们持久化的是字典列表，而不是字符串列表，从而与加载逻辑保持一致。
 
 **反馈:**
 * **2025-07-06**: 待执行。
