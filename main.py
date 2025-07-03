@@ -80,21 +80,6 @@ async def get_api_key(
 TASK_STATUSES = {}
 
 
-def get_s3_storage(config: CoreConfig = Depends(get_core_config)) -> S3Storage:
-    """Dependency provider for S3Storage."""
-    client_kwargs = {
-        "aws_access_key_id": config.minio.access_key,
-        "aws_secret_access_key": config.minio.secret_key.get_secret_value(),
-        "region_name": "us-east-1"
-    }
-    if config.minio.endpoint:
-        client_kwargs["endpoint_url"] = config.minio.endpoint
-    
-    s3_client = boto3.client("s3", **client_kwargs)
-
-    return S3Storage(config=config.minio, s3_client=s3_client)
-
-
 def get_processor_registry(
     config: CoreConfig = Depends(get_core_config),
     storage: S3Storage = Depends(get_s3_storage)

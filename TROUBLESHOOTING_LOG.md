@@ -417,7 +417,7 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 `S3Storage` 无法在 `moto` 环境下被正确初始化。
 
 **根本原因分析:**
-为了进行最终确认，我们需要进行一次终极隔离测试，完全抛开 FastAPI 的依赖注入和 `TestClient`，直接在 `moto` 的上下文中尝试创建 `S3Storage` 实例。如果这个测试也失败，则 100% 证明问题出在 `S3Storage` 的 `__init__` 方法中的 `boto3.client` 调用上。
+为了进行最终确认，我们需要进行一次终极隔离测试，完全抛开 FastAPI 的依赖注入和 `TestClient`，直接在 `moto` 的上下文中尝试创建 `S3Storage` 实例。如果这个测试也失败了，则 100% 证明问题出在 `S3Storage` 的 `__init__` 方法中的 `boto3.client` 调用上。
 
 **解决方案 (最小化修改):**
 在 `tests/test_api.py` 中添加一个新的、独立的测试函数 `test_s3_storage_direct_instantiation`。该函数将在 `@mock_aws` 装饰器（或 `s3_mock` fixture）的保护下，直接导入并实例化 `S3Storage`。如果实例化过程（包括其中的 `_create_bucket_if_not_exists`）没有抛出异常，则测试通过。
@@ -455,16 +455,38 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 **反馈:**
 * **2025-07-06**: **已完成**。此修复成功解决了应用启动时的 `TypeError`，使所有测试都能进入运行阶段。但这暴露了下一个问题：在 API 端点中使用的依赖注入函数同样存在这个错误。
 
-#### **第二十七步: 修复 `main.py` 中的依赖注入函数**
+#### **第二十七步: 统一依赖注入函数并为测试修复做准备**
 
 **问题:**
-`test_async_upload_and_chat` 测试失败，报告 `TypeError: S3Storage.__init__() missing 1 required positional argument: 's3_client'`。
+`test_async_upload_and_chat` 测试失败，API 返回 500 错误，日志显示 `botocore.exceptions.ClientError: An error occurred (SlowDownRead)`。
 
 **根本原因分析:**
-错误的根源在于 `main.py` 中定义的、供 FastAPI 使用的 `get_s3_storage` 依赖注入函数。该函数在我之前的重构中被遗漏了，它仍然在使用旧的、不带 `s3_client` 参数的方式来调用 `S3Storage` 的构造函数。
+通过检查 `main.py`，我们发现了最终的根本原因。应用代码本身（包括 `S3Storage` 类和 `get_s3_storage` 依赖注入函数）在重构后是**完全正确**的。问题的根源在于**测试环境的配置**：
+1.  `main.py` 中存在一个与 `s3_storage.py` 中功能重复的 `get_s3_storage` 函数，这造成了代码冗余。
+2.  更关键的是，`tests/test_api.py` 在运行测试时，没有使用 FastAPI 的 `dependency_overrides` 功能来用一个**模拟的 S3 客户端**替换掉真实的依赖。因此，测试发起 API 调用时，应用会创建真实的 `boto3` 客户端，该客户端尝试连接云端 S3 服务并因此失败，返回 `SlowDownRead` 错误。
+
+**解决方案 (分步进行):**
+当前步骤的目标是清理代码，为下一步修复测试做好准备。
+1.  **清理 `main.py`**: 删除 `main.py` 中本地定义的 `get_s3_storage` 函数。
+2.  **依赖统一**: 确保 `main.py` 依赖于从 `src/nexusmind/storage/s3_storage.py` 导入的 `get_s3_storage` 函数作为唯一的依赖项来源。
+
+**反馈:**
+* **2025-07-06**: **已完成**。此重构成功地统一了依赖来源，并暴露了下一个潜藏在 Celery 任务中的问题。
+
+#### **第二十八步: 修复 Celery 任务中的 `TypeError`**
+
+**问题:**
+`test_async_upload_and_chat` 测试失败，API 返回 500 错误，后台日志显示 `TypeError: S3Storage.__init__() missing 2 required positional arguments: 'config' and 's3_client'`。
+
+**根本原因分析:**
+错误的根源在 `src/nexusmind/tasks.py`。当 Celery worker 在后台执行文件处理任务时，它需要创建一个 `S3Storage` 实例来下载文件内容。然而，任务中的辅助函数 `setup_processor_registry` 仍然在使用旧的、无参数的方式调用 `S3Storage()`。这与我们重构后需要注入 `config` 和 `s3_client` 的新构造函数不匹配，因此导致了 `TypeError`。
 
 **解决方案 (最小化修改):**
-修改 `main.py` 中的 `get_s3_storage` 函数，使其正确地创建 `boto3` 客户端，并将其作为参数注入到 `S3Storage` 的实例中。
+重构 `src/nexusmind/tasks.py` 中的 `setup_processor_registry` 辅助函数。它需要被修改，以完整地创建并配置 `S3Storage` 实例：
+1.  从 `nexusmind.config` 导入并调用 `get_core_config` 来获取配置。
+2.  导入 `boto3`。
+3.  使用配置信息创建 `boto3` 客户端。
+4.  用创建的 `config` 和 `s3_client` 来正确地实例化 `S3Storage`。
 
 **反馈:**
 * **2025-07-06**: 待执行。

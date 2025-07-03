@@ -1,9 +1,11 @@
 from uuid import UUID
+import boto3
 
 from sqlmodel import Session, select
 
 from .brain.brain import Brain
 from .celery_app import app
+from .config import get_core_config
 from .database import engine
 from .files.file import NexusFile
 from .logger import logger
@@ -17,7 +19,20 @@ from .storage.s3_storage import S3Storage
 
 def setup_processor_registry() -> ProcessorRegistry:
     """Helper function to initialize and configure the processor registry."""
-    storage = S3Storage()  # Use S3 storage now
+    # Since this runs in a separate Celery process, we need to initialize
+    # the config and S3 client here, similar to how it's done in main.py
+    config = get_core_config()
+    client_kwargs = {
+        "aws_access_key_id": config.minio.access_key,
+        "aws_secret_access_key": config.minio.secret_key.get_secret_value(),
+        "region_name": "us-east-1",  # Added for consistency
+    }
+    if config.minio.endpoint:
+        client_kwargs["endpoint_url"] = config.minio.endpoint
+
+    s3_client = boto3.client("s3", **client_kwargs)
+    storage = S3Storage(config=config.minio, s3_client=s3_client)
+
     registry = ProcessorRegistry()
     registry.register_processor(".txt", SimpleTxtProcessor(storage=storage))
     return registry
