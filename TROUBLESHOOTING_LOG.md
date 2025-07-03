@@ -513,10 +513,23 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 我们已经彻底排除了应用代码中的所有 Bug。问题的最终根源在于测试环境的设置。`tests/test_api.py` 从未用一个**模拟的 S3 客户端**来替换应用在运行时创建的**真实 S3 客户端**。因此，无论是 FastAPI 端点还是 Celery 后台任务，都在尝试连接一个不存在的、真实的云端 S3 服务，导致了 `InternalError` 或 `SlowDownRead` 等网络错误。
 
 **解决方案 (终极方案):**
-我们将使用 FastAPI 官方推荐的测试方法：`dependency_overrides`。这将确保在测试的生命周期内，任何需要 `S3Storage` 的地方都会收到一个注入了**模拟 S3 客户端**的实例。
-1.  **创建模拟客户端 Fixture**: 在 `tests/test_api.py` 中，创建一个 `s3_mock_client` fixture，它使用 `moto` 来启动一个模拟 S3 服务，并 `yield` 一个配置为连接该模拟服务的 `boto3` 客户端。
-2.  **覆盖应用依赖**: 修改 `api_client` fixture。在创建 `TestClient` 之前，使用 `app.dependency_overrides[get_s3_storage] = ...` 来覆盖原始的依赖。这个新的依赖项将是一个返回注入了**模拟客户端**的 `S3Storage` 实例的函数。
-3.  **清理**: 移除所有不再需要的、尝试模拟 S3 的旧代码（如 `@mock_aws` 装饰器、`settings` fixture 中设置环境变量等）。
+我们使用了 FastAPI 的 `dependency_overrides` 来为 Web 请求提供模拟的 S3 服务，同时使用 `unittest.mock.patch` 来为 Celery 后台任务提供模拟的处理器，从而确保了整个测试流程都在一个完全模拟和受控的环境中进行。
+
+**反馈:**
+* **2025-07-06**: **已完成**。两层模拟都已成功实现。测试日志显示，应用逻辑（文件处理、数据块生成）已完全成功，这最终暴露了潜藏在最底层的基础设施配置问题。
+
+#### **第三十一步 (基础设施修复): 解决 Redis 写入错误**
+
+**问题:**
+`test_async_upload_and_chat` 测试失败，API 返回 500 错误，日志显示 `redis.exceptions.ResponseError: MISCONF Redis is configured to save RDB snapshots, but it's currently unable to persist to disk.`。
+
+**根本原因分析:**
+所有应用层面的 Bug 都已修复。Celery 任务成功执行完毕后，试图将其成功状态写入 Redis。但 Docker 中的 Redis 服务因无法将快照写入磁盘而触发了一个安全配置 (`stop-writes-on-bgsave-error`)，导致其拒绝了 Celery 的写入请求。这是一个基础设施配置问题，而非 Python 代码问题。
+
+**解决方案 (配置修复):**
+对于测试环境，我们不需要 Redis 的持久化功能。最简单的解决方案是在 `docker-compose.yml` 中修改 Redis 服务的启动命令，明确地禁用这个会引起问题的功能。
+1.  找到 `docker-compose.yml` 文件中的 `redis` 服务。
+2.  为其添加一个 `command` 指令，该指令会覆盖 Redis 默认的启动命令，并禁用 RDB 快照的后台保存错误检查。
 
 **反馈:**
 * **2025-07-06**: 待执行。

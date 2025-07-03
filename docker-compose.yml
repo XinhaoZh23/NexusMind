@@ -19,6 +19,7 @@ services:
     container_name: nexusmind_redis
     ports:
       - "6379:6379"
+    command: redis-server --stop-writes-on-bgsave-error no
     volumes:
       - ./redis_data:/data
     restart: unless-stopped
