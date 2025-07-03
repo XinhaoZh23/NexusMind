@@ -1,4 +1,3 @@
-import uuid
 from core.nexusmind.brain.brain import Brain
 from core.nexusmind.brain.serialization import BRAIN_STORAGE_PATH
 
@@ -11,7 +10,9 @@ def test_brain_initialization():
     assert brain.name == "Default Brain"
     assert brain.history == []
     assert brain.llm_endpoint is not None
-    assert brain.llm_endpoint.config.llm_model_name == "test-gpt"
+    assert brain.llm_endpoint.model_name == "test-gpt"
+    assert brain.llm_endpoint.temperature == 0.5
+    assert brain.llm_endpoint.max_tokens == 50
 
 
 def test_brain_history_update():
@@ -34,6 +35,7 @@ def test_save_and_load_brain(tmp_path):
     try:
         # Ugly but effective for testing: modify the global path
         import core.nexusmind.brain.serialization
+
         core.nexusmind.brain.serialization.BRAIN_STORAGE_PATH = tmp_path
 
         # 1. Create and modify a brain instance
@@ -57,9 +59,10 @@ def test_save_and_load_brain(tmp_path):
         assert loaded_brain.llm_model_name == "test-gpt-save"
         assert loaded_brain.temperature == 0.8
         assert loaded_brain.llm_endpoint is not None  # Ensure it's re-created
-        assert loaded_brain.llm_endpoint.config.max_tokens == 150
+        assert loaded_brain.llm_endpoint.max_tokens == 150
 
     finally:
         # Restore the original path to avoid side effects
         import core.nexusmind.brain.serialization
-        core.nexusmind.brain.serialization.BRAIN_STORAGE_PATH = original_path 
+
+        core.nexusmind.brain.serialization.BRAIN_STORAGE_PATH = original_path

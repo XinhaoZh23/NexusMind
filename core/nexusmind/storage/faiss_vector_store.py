@@ -1,13 +1,14 @@
 import json
 from pathlib import Path
 from typing import List, Optional
-import numpy as np
-import faiss
 
-from core.nexusmind.storage.vector_store_base import VectorStoreBase
-from core.nexusmind.processor.splitter import Chunk
+import faiss
+import numpy as np
+
 from core.nexusmind.llm.llm_endpoint import LLMEndpoint
 from core.nexusmind.logger import logger
+from core.nexusmind.processor.splitter import Chunk
+from core.nexusmind.storage.vector_store_base import VectorStoreBase
 
 
 class FaissVectorStore(VectorStoreBase):
@@ -29,21 +30,26 @@ class FaissVectorStore(VectorStoreBase):
         """Helper to get the path for the chunk mapping file."""
         if not self.store_path:
             raise ValueError("store_path must be set to save or load chunks.")
-        return Path(self.store_path).with_suffix('.json')
+        return Path(self.store_path).with_suffix(".json")
 
     def add_documents(self, chunks: List[Chunk]) -> None:
         if not chunks:
             return
 
         logger.info(f"Generating embeddings for {len(chunks)} chunks...")
-        embeddings = [self.llm_endpoint.get_embedding(chunk.content) for chunk in chunks]
-        
+        embeddings = [
+            self.llm_endpoint.get_embedding(chunk.content) for chunk in chunks
+        ]
+
         # Ensure all embeddings are valid
         valid_embeddings = [emb for emb in embeddings if emb]
         if not valid_embeddings:
-            logger.warning("No valid embeddings were generated for the provided chunks. Index will not be updated.")
+            logger.warning(
+                "No valid embeddings were generated for the provided chunks. "
+                "Index will not be updated."
+            )
             return
-        
+
         logger.info(f"Successfully generated {len(valid_embeddings)} valid embeddings.")
         dimension = len(valid_embeddings[0])
         vectors = np.array(valid_embeddings).astype("float32")
@@ -67,14 +73,14 @@ class FaissVectorStore(VectorStoreBase):
             return []
 
         query_vector = np.array([query_embedding]).astype("float32")
-        
+
         # k might be larger than the number of vectors in the index
         k = min(k, self.index.ntotal)
 
         distances, indices = self.index.search(query_vector, k)
 
         # The indices returned are 2D, so we flatten them
-        return [self.index_to_chunk[i] for i in indices[0]] 
+        return [self.index_to_chunk[i] for i in indices[0]]
 
     def save_to_disk(self):
         """Saves the FAISS index and the chunk mapping to disk."""
@@ -94,8 +100,13 @@ class FaissVectorStore(VectorStoreBase):
 
         # Save chunk mapping
         chunk_path = self._get_chunk_path()
-        with open(chunk_path, 'w') as f:
-            json.dump([chunk.model_dump() for chunk in self.index_to_chunk], f, indent=4, default=str)
+        with open(chunk_path, "w") as f:
+            json.dump(
+                [chunk.model_dump() for chunk in self.index_to_chunk],
+                f,
+                indent=4,
+                default=str,
+            )
 
         logger.info(f"Saved {len(self.index_to_chunk)} chunk metadata to {chunk_path}")
 
@@ -111,6 +122,6 @@ class FaissVectorStore(VectorStoreBase):
         # Load chunk mapping
         chunk_path = self._get_chunk_path()
         if chunk_path.exists():
-            with open(chunk_path, 'r') as f:
+            with open(chunk_path, "r") as f:
                 chunk_data = json.load(f)
-                self.index_to_chunk = [Chunk(**data) for data in chunk_data] 
+                self.index_to_chunk = [Chunk(**data) for data in chunk_data]

@@ -1,5 +1,6 @@
 import os
 from typing import Dict
+
 from core.nexusmind.processor.processor_base import ProcessorBase
 
 
@@ -30,5 +31,7 @@ class ProcessorRegistry:
 
         processor = self._processors.get(normalized_ext)
         if processor is None:
-            raise ValueError(f"No processor registered for file type '{normalized_ext}'")
-        return processor 
+            raise ValueError(
+                f"No processor registered for file type '{normalized_ext}'"
+            )
+        return processor

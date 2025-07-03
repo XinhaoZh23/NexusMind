@@ -1,5 +1,4 @@
 import uuid
-import pytest
 
 from core.nexusmind.files.file import NexusFile
 from core.nexusmind.processor.splitter import Chunk
@@ -14,7 +13,7 @@ def test_nexus_file_instantiation():
         file_id=file_id,
         file_name="test.txt",
         file_path="/path/to/test.txt",
-        metadata={"source": "upload"}
+        metadata={"source": "upload"},
     )
     assert file.file_id == file_id
     assert file.file_name == "test.txt"
@@ -32,7 +31,7 @@ def test_chunk_instantiation():
         chunk_id=chunk_id,
         document_id=document_id,
         content="This is a test chunk.",
-        metadata={"page": 1}
+        metadata={"page": 1},
     )
     assert chunk.chunk_id == chunk_id
     assert chunk.document_id == document_id
@@ -55,4 +54,4 @@ def test_metadata_handling():
     chunk = Chunk(document_id=doc_id, content="content")
     assert chunk.metadata == {}  # Should default to empty dict
     chunk.metadata["chunk_source"] = "splitter"
-    assert chunk.metadata["chunk_source"] == "splitter" 
+    assert chunk.metadata["chunk_source"] == "splitter"

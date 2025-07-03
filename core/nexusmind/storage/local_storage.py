@@ -1,8 +1,9 @@
 import os
-from pathlib import Path
-from core.nexusmind.storage.storage_base import StorageBase
-from typing import Optional
 import uuid
+from pathlib import Path
+from typing import Optional
+
+from core.nexusmind.storage.storage_base import StorageBase
 
 
 class LocalStorage(StorageBase):
@@ -26,7 +27,7 @@ class LocalStorage(StorageBase):
 
         full_path = self._get_full_path(file_path)
         full_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(full_path, "wb") as f:
             f.write(file_content)
 
@@ -53,4 +54,4 @@ class LocalStorage(StorageBase):
         Check if a local file exists.
         """
         full_path = self._get_full_path(file_path)
-        return full_path.exists() 
+        return full_path.exists()

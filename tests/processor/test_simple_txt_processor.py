@@ -1,5 +1,7 @@
 from core.nexusmind.files.file import NexusFile
-from core.nexusmind.processor.implementations.simple_txt_processor import SimpleTxtProcessor
+from core.nexusmind.processor.implementations.simple_txt_processor import (
+    SimpleTxtProcessor,
+)
 from core.nexusmind.storage.local_storage import LocalStorage
 
 
@@ -11,7 +13,7 @@ def test_simple_txt_processor(tmp_path):
     storage = LocalStorage(base_path=str(tmp_path))
     file_path = "test.txt"
     file_content = "First line.\nSecond line.\n\nThird line."
-    storage.save(file_path, file_content.encode("utf-8"))
+    storage.save(file_content.encode("utf-8"), file_path)
 
     # 2. Create a NexusFile object pointing to the test file
     nexus_file = NexusFile(file_name="test.txt", file_path=file_path)
@@ -28,4 +30,4 @@ def test_simple_txt_processor(tmp_path):
 
     assert chunks[0].document_id == nexus_file.file_id
     assert chunks[1].metadata["line_number"] == 2
-    assert chunks[2].metadata["file_name"] == "test.txt" 
+    assert chunks[2].metadata["file_name"] == "test.txt"
