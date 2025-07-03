@@ -14,8 +14,8 @@ class S3Storage(StorageBase):
         self.config = config
         self.s3_client = boto3.client(
             "s3",
-            aws_access_key_id=self.config.aws_access_key_id,
-            aws_secret_access_key=self.config.aws_secret_access_key.get_secret_value(),
+            aws_access_key_id=self.config.access_key,
+            aws_secret_access_key=self.config.secret_key.get_secret_value(),
             endpoint_url=self.config.endpoint,
         )
         self._create_bucket_if_not_exists()

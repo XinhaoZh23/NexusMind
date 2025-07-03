@@ -291,4 +291,34 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 修改 `src/nexusmind/storage/s3_storage.py`，在 `S3Storage` 的 `__init__` 方法中，使用正确的属性名 `self.config.aws_access_key_id` 和 `self.config.aws_secret_access_key` 来读取配置。
 
 **反馈:**
+* **2025-07-06**: 已修复。此举成功解决了属性名错误，但暴露了最终的、最根本的类型不匹配问题：`MinioConfig` 中的 `aws_secret_access_key` 被定义为 `str` 而非 `SecretStr`。
+
+#### **第九步：修复 `MinioConfig` 中的密钥类型错误**
+
+**问题:**
+`test_api.py` 测试失败，因为代码试图在一个字符串对象上调用 `get_secret_value()` 方法。
+
+**根本原因分析:**
+`S3Storage` 的实现是正确的，它期望从配置中收到的 `secret_key` 是一个 Pydantic `SecretStr` 对象，以安全地提取其值。然而，在 `src/nexusmind/base_config.py` 中，`MinioConfig` 模型将 `aws_secret_access_key` 字段的类型错误地定义为了 `str`。
+
+**解决方案:**
+修改 `src/nexusmind/base_config.py` 文件：
+1.  从 `pydantic` 导入 `SecretStr`。
+2.  在 `MinioConfig` 类中，将 `aws_secret_access_key` 字段的类型从 `str` 更改为 `SecretStr`。
+
+**反馈:**
+* **2025-07-06**: 已修复。在修复过程中，为了简化代码，将 `MinioConfig` 内的字段名从 `aws_access_key_id` 等重命名为了 `access_key`，但忘记在 `s3_storage.py` 中同步更新这些引用。
+
+#### **第十步：同步 `S3Storage` 与 `MinioConfig` 的属性名**
+
+**问题:**
+`test_api.py` 测试失败，因为 `S3Storage` 试图访问 `MinioConfig` 对象上一个不存在的 `aws_access_key_id` 属性。
+
+**根本原因分析:**
+上一步对 `MinioConfig` 的重构只完成了一半。模型中的字段名被简化了（例如，改为 `access_key`），但 `S3Storage` 中使用这些字段的代码没有被相应地更新。
+
+**解决方案:**
+修改 `src/nexusmind/storage/s3_storage.py` 文件，在 `S3Storage` 的 `__init__` 方法中，使用与 `MinioConfig` 中定义一致的、新的、更简洁的属性名（`access_key` 和 `secret_key`）。
+
+**反馈:**
 * **2025-07-06**: 待执行。

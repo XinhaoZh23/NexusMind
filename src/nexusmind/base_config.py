@@ -1,3 +1,4 @@
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -36,7 +37,8 @@ class RedisConfig(BaseConfig):
 class MinioConfig(BaseConfig):
     """Minio/S3 configuration."""
 
-    aws_access_key_id: str = "minioadmin"
-    aws_secret_access_key: str = "minioadmin"
-    aws_endpoint_url: str = "http://localhost:9000"
-    s3_bucket_name: str = "nexusmind-documents"
+    model_config = SettingsConfigDict(env_prefix="MINIO_")
+    access_key: str = Field("minioadmin", alias="MINIO_ROOT_USER")
+    secret_key: SecretStr = Field("minioadmin", alias="MINIO_ROOT_PASSWORD")
+    endpoint: str = "http://localhost:9000"
+    bucket: str = "nexusmind"
