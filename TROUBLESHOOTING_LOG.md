@@ -124,6 +124,20 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 将 `mock.patch` 的字符串参数从 `core.nexusmind...` 修改为 `nexusmind...`。
 
 **反馈:**
+* **2025-07-05**: 已修复。此举成功解决了 `test_api.py` 中的 `ModuleNotFoundError`，并将故障点推进到了 `main.py` 中的依赖注入环节。
+
+#### **第四步：修复 `S3Storage` 初始化时的 `TypeError`**
+
+**问题描述:**
+`tests/test_api.py` 的失败原因转变为 `TypeError: S3Storage.__init__() missing 1 required positional argument: 'config'`。
+
+**根本原因分析:**
+错误发生在 FastAPI 的依赖注入环节。`main.py` 中的 `get_s3_storage` 依赖提供者在调用 `S3Storage()` 时没有传递所需的 `config` 参数。
+
+**解决方案:**
+重构 `main.py` 中的 `get_s3_storage` 函数，让它依赖于 `get_core_config` 来获取配置实例，并将其作为参数传递给 `S3Storage` 的构造函数。
+
+**反馈:**
 * **2025-07-05**: 待执行。
 
 ---
