@@ -56,7 +56,7 @@ class Brain(BaseModel):
     def save(self):
         """Saves the brain's state."""
         logger.info(f"Saving brain state for brain_id: {self.brain_id}")
-        from core.nexusmind.brain import serialization
+        from . import serialization
 
         serialization.save_brain(self)
 
@@ -64,6 +64,6 @@ class Brain(BaseModel):
     def load(cls, brain_id: uuid.UUID) -> "Brain":
         """Loads a brain's state."""
         logger.info(f"Loading brain state for brain_id: {brain_id}")
-        from core.nexusmind.brain import serialization
+        from . import serialization
 
         return serialization.load_brain(brain_id)

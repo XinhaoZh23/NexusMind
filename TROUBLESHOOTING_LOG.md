@@ -164,3 +164,46 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 
 **问题描述:**
 `
+---
+
+## 2025-07-06: 修复运行时 (Runtime) 错误 (续)
+
+**问题描述:**
+在修正了 `.gitignore` 问题并能正确追踪 `s3_storage.py` 文件后，`pytest` 现在可以运行，但报告了 4 个新的运行时错误。
+
+**初步分析:**
+当前的 4 个失败是：
+1.  `tests/test_api.py::test_async_upload_and_chat`: `TypeError: unhashable type: 'CoreConfig'` - 这通常由缓存函数（如使用 `@lru_cache`）试图处理一个不可哈希的（可变）参数（如 Pydantic 配置对象）引起。
+2.  `tests/test_brain.py::test_save_and_load_brain`: `ModuleNotFoundError: No module named 'core'` - 在 `brain.py` 中存在一个指向旧 `core/` 目录结构的绝对导入语句，是代码重构的遗留问题。
+3.  `tests/test_llm_endpoint.py::test_get_chat_completion`: `NameError: name 'Mock' is not defined` - 测试文件中使用了 `Mock` 对象但忘记导入。
+4.  `tests/test_vector_store.py::test_add_and_search`: `NameError: name 'logger' is not defined` - 在 `faiss_vector_store.py` 文件中使用了 `logger` 但未定义。
+
+### **执行计划**
+
+#### **第一步：修复 `brain.py` 中的 `ModuleNotFoundError`**
+
+**问题:**
+`tests/test_brain.py` 测试失败，因为 `src/nexusmind/brain/brain.py` 在其 `save` 方法中使用了过时的导入路径: `from core.nexusmind.brain import serialization`。
+
+**根本原因分析:**
+这是从 `core/` 到 `src/` 目录结构重构时遗漏的硬编码路径。
+
+**解决方案:**
+将 `src/nexusmind/brain/brain.py` 中的绝对导入更改为相对导入：`from . import serialization`。
+
+**反馈:**
+* **2025-07-06**: 已修复。此举成功解决了 `ModuleNotFoundError`，但暴露了更深层次的 `AttributeError`，因为 `brain.py` 中调用的函数 `save_brain_to_file` 在 `serialization.py` 模块中不存在。
+
+#### **第二步：修复 `brain.py` 中的 `AttributeError`**
+
+**问题:**
+`tests/test_brain.py` 测试失败，因为 `brain.py` 试图调用一个不存在的函数 `serialization.save_brain_to_file(self)`。
+
+**根本原因分析:**
+上一步的修复中，对 `save_brain_to_file` 的调用是一个不正确的猜测。我们需要检查 `serialization.py` 文件的实际内容，以确定正确的函数名称和签名。
+
+**解决方案:**
+检查 `src/nexusmind/brain/serialization.py` 的内容，并相应地更正 `src/nexusmind/brain/brain.py` 中的函数调用。
+
+**反馈:**
+* **2025-07-06**: 待执行。
