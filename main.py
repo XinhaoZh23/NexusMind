@@ -8,6 +8,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, Uploa
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+import boto3
 
 from nexusmind.brain.brain import Brain
 from nexusmind.celery_app import app as celery_app
@@ -42,8 +43,18 @@ def on_startup():
     create_db_and_tables()
     # Ensure the S3 bucket exists by manually creating dependencies
     config = get_core_config()
-    s3_storage = S3Storage(config.minio)
-    s3_storage._create_bucket_if_not_exists()
+    
+    # Mirror the logic from get_s3_storage to correctly instantiate
+    client_kwargs = {
+        "aws_access_key_id": config.minio.access_key,
+        "aws_secret_access_key": config.minio.secret_key.get_secret_value(),
+        "region_name": "us-east-1"
+    }
+    if config.minio.endpoint:
+        client_kwargs["endpoint_url"] = config.minio.endpoint
+    
+    s3_client = boto3.client("s3", **client_kwargs)
+    s3_storage = S3Storage(config=config.minio, s3_client=s3_client)
 
 
 # --- Configuration and Dependency Injection ---
@@ -71,10 +82,23 @@ TASK_STATUSES = {}
 
 def get_s3_storage(config: CoreConfig = Depends(get_core_config)) -> S3Storage:
     """Dependency provider for S3Storage."""
-    return S3Storage(config.minio)
+    client_kwargs = {
+        "aws_access_key_id": config.minio.access_key,
+        "aws_secret_access_key": config.minio.secret_key.get_secret_value(),
+        "region_name": "us-east-1"
+    }
+    if config.minio.endpoint:
+        client_kwargs["endpoint_url"] = config.minio.endpoint
+    
+    s3_client = boto3.client("s3", **client_kwargs)
+
+    return S3Storage(config=config.minio, s3_client=s3_client)
 
 
-def get_processor_registry(storage: S3Storage = Depends(get_s3_storage)) -> ProcessorRegistry:
+def get_processor_registry(
+    config: CoreConfig = Depends(get_core_config),
+    storage: S3Storage = Depends(get_s3_storage)
+) -> ProcessorRegistry:
     """
     Dependency provider for the ProcessorRegistry.
     It creates and configures a singleton instance of the registry.

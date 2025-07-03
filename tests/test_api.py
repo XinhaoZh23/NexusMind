@@ -167,22 +167,3 @@ def test_chat_with_invalid_api_key(settings, api_client):
     )
     assert response.status_code == 403
     assert "Could not validate credentials" in response.text
-
-
-# --- Isolated S3 Test ---
-@mock_aws
-def test_s3_storage_direct_instantiation(settings):
-    """
-    Tests if S3Storage can be instantiated and used directly,
-    bypassing the FastAPI TestClient to isolate moto integration.
-    """
-    try:
-        # This config will be populated by the `settings` fixture's env vars
-        minio_config = MinioConfig()
-        storage = S3Storage(config=minio_config)
-        # The __init__ of S3Storage calls _create_bucket_if_not_exists().
-        # If we reach here, it means the bucket was created in the mock env.
-        # Let's double check by putting an object.
-        storage.save("test-direct.txt", b"hello world")
-    except Exception as e:
-        pytest.fail(f"S3Storage direct instantiation failed: {e}")

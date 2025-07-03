@@ -268,7 +268,7 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 这会绕过错误的依赖注入调用，同时保持原有功能不变。
 
 **反馈:**
-* **2025-07-06**: 已修复。此举成功解决了应用启动过程中的 `AttributeError`，使 `test_api.py` 中的 2 个测试转为通过，并将失败推进到了 `/upload` 端点的核心逻辑中。
+* **2025-07-06**: **已完成**。此修复成功解决了应用启动时的 `TypeError`，使所有测试都能进入运行阶段。但这暴露了下一个问题：在 API 端点中使用的依赖注入函数同样存在这个错误。
 
 #### **第十五步：在 S3Storage 中实现文件保存逻辑**
 
@@ -437,6 +437,34 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 1.  **修改 `S3Storage`**: 重构 `S3Storage.__init__`，使其不再创建 `boto3` 客户端，而是必须接收一个外部传入的 `boto3_client`。
 2.  **修改应用代码**: 调整 `main.py` 和 `s3_storage.py` 中的依赖注入函数 (`get_s3_storage`)，使其负责创建 `boto3` 客户端，然后用它来实例化 `S3Storage`。
 3.  **修改测试**: 重构 `tests/test_api.py`。在测试的 `api_client` fixture 中，使用 `moto` 创建一个模拟的 `s3_client`，然后利用 FastAPI 的 `app.dependency_overrides` 功能，将应用中原始的 `get_s3_storage` 依赖替换为一个返回注入了**模拟客户端**的 `S3Storage` 实例的新函数。同时，移除不再需要的 `s3_mock` fixture 和隔离测试。
+
+**反馈:**
+* **2025-07-06**: **引入了回归错误**。此重构方向正确，但实施不完整。我修改了 `S3Storage` 的构造函数，却没有更新 `main.py` 中 `on_startup` 事件处理器对它的调用，导致应用无法启动，所有测试都在设置阶段因 `TypeError` 而失败。
+
+#### **第二十六步: 修复 `on_startup` 中的 `TypeError`**
+
+**问题:**
+所有测试在设置阶段都失败了，报告 `TypeError: S3Storage.__init__() missing 1 required positional argument: 's3_client'`。
+
+**根本原因分析:**
+错误的根源在 `main.py` 的 `on_startup` 函数。该函数手动调用 `S3Storage(config.minio)` 来实例化存储类，但在我将 `S3Storage` 重构为需要注入 `s3_client` 后，忘记了更新此处的调用代码。
+
+**解决方案 (最小化修改):**
+修改 `main.py` 中的 `on_startup` 函数。我们将模仿 `get_s3_storage` 函数中的逻辑，在 `on_startup` 内部也完整地创建 `boto3` 客户端，然后再用它来实例化 `S3Storage`。
+
+**反馈:**
+* **2025-07-06**: **已完成**。此修复成功解决了应用启动时的 `TypeError`，使所有测试都能进入运行阶段。但这暴露了下一个问题：在 API 端点中使用的依赖注入函数同样存在这个错误。
+
+#### **第二十七步: 修复 `main.py` 中的依赖注入函数**
+
+**问题:**
+`test_async_upload_and_chat` 测试失败，报告 `TypeError: S3Storage.__init__() missing 1 required positional argument: 's3_client'`。
+
+**根本原因分析:**
+错误的根源在于 `main.py` 中定义的、供 FastAPI 使用的 `get_s3_storage` 依赖注入函数。该函数在我之前的重构中被遗漏了，它仍然在使用旧的、不带 `s3_client` 参数的方式来调用 `S3Storage` 的构造函数。
+
+**解决方案 (最小化修改):**
+修改 `main.py` 中的 `get_s3_storage` 函数，使其正确地创建 `boto3` 客户端，并将其作为参数注入到 `S3Storage` 的实例中。
 
 **反馈:**
 * **2025-07-06**: 待执行。
