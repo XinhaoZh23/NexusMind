@@ -10,7 +10,8 @@ from pathlib import Path
 import sys
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from main import app, get_processor_registry, get_storage, get_core_config
+from main import app, get_processor_registry, get_s3_storage, get_core_config
+from core.nexusmind.celery_app import app as celery_app
 
 # Create a TestClient instance
 client = TestClient(app)
@@ -19,22 +20,21 @@ client = TestClient(app)
 VALID_API_KEY = "test-key"
 
 @pytest.fixture
-def settings(tmp_path):
-    """Fixture to create a .env file for testing."""
-    # Pydantic v2 expects a JSON-formatted string for lists from env vars.
-    env_content = f'API_KEYS=\'[\"{VALID_API_KEY}\"]\''
-    env_file = tmp_path / ".env"
-    env_file.write_text(env_content)
+def settings(monkeypatch):
+    """Fixture to set environment variables and configure Celery for testing."""
+    monkeypatch.setenv("API_KEYS", f'["{VALID_API_KEY}"]')
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "minioadmin")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "minioadmin")
+    monkeypatch.setenv("AWS_ENDPOINT_URL", "http://localhost:9000")
+    monkeypatch.setenv("S3_BUCKET_NAME", "test-bucket")
+
+    # Force Celery to run tasks eagerly (synchronously) in tests
+    celery_app.conf.update(task_always_eager=True)
     
     # Pydantic settings are cached, clear the cache to force reload
     get_core_config.cache_clear()
-    
-    # Change CWD for the duration of the test
-    original_cwd = os.getcwd()
-    os.chdir(tmp_path)
     yield
-    os.chdir(original_cwd)
-    # Clear cache again after test
+    # Clear cache again after test to avoid side effects
     get_core_config.cache_clear()
 
 # --- Test Data ---
@@ -52,15 +52,13 @@ def mock_embedding() -> list[float]:
 @patch('core.nexusmind.llm.llm_endpoint.litellm.embedding')
 def test_async_upload_and_chat(mock_embedding_call, mock_completion_call, test_txt_content, mock_embedding, settings):
     """
-    Tests the full asynchronous end-to-end flow with a valid API key.
-    1. Upload a file, get a task_id.
-    2. Poll the status endpoint until the task is successful.
-    3. Ask a question about the file.
-    4. Verify the response.
+    Tests the full end-to-end flow in a synchronous testing environment.
+    1. Upload a file, which is processed immediately due to Celery's eager mode.
+    2. Ask a question about the file.
+    3. Verify the response.
     """
     # --- Mock external services ---
     mock_embedding_response = MagicMock()
-    # Handle the case where the mock might be called with a list of texts
     mock_embedding_response.data = [MagicMock()]
     mock_embedding_response.data[0].embedding = mock_embedding
     mock_embedding_call.return_value = mock_embedding_response
@@ -71,7 +69,7 @@ def test_async_upload_and_chat(mock_embedding_call, mock_completion_call, test_t
     
     headers = {"X-API-Key": VALID_API_KEY}
 
-    # --- 1. Upload the file and start background task ---
+    # --- 1. Upload the file (should be processed synchronously) ---
     brain_id = str(uuid.uuid4())
     files = {"file": ("test_doc.txt", test_txt_content.encode('utf-8'), "text/plain")}
     response_upload = client.post(
@@ -81,27 +79,17 @@ def test_async_upload_and_chat(mock_embedding_call, mock_completion_call, test_t
         headers=headers
     )
 
-    # Assert upload was accepted
-    assert response_upload.status_code == 202
+    # Assert upload was accepted and processed
+    assert response_upload.status_code == 200
     response_json = response_upload.json()
     assert "task_id" in response_json
     task_id = response_json["task_id"]
 
-    # --- 2. Poll for task completion ---
-    max_wait = 10  # seconds
-    start_time = time.time()
-    final_status = ""
-    while time.time() - start_time < max_wait:
-        response_status = client.get(f"/upload/status/{task_id}")
-        assert response_status.status_code == 200
-        status_json = response_status.json()
-        final_status = status_json.get("status")
-        if final_status == "SUCCESS":
-            break
-        assert final_status in ["PENDING", "PROCESSING"]
-        time.sleep(0.1)
-
-    assert final_status == "SUCCESS", f"Task did not succeed within {max_wait} seconds."
+    # --- 2. Verify task status is SUCCESS directly ---
+    response_status = client.get(f"/upload/status/{task_id}")
+    assert response_status.status_code == 200
+    status_json = response_status.json()
+    assert status_json.get("status") == "SUCCESS"
 
     # --- 3. Chat about the file ---
     response_chat = client.post(

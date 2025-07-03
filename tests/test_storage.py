@@ -11,7 +11,7 @@ def test_save_and_exists(tmp_path):
     content = b"Hello, World!"
 
     assert not storage.exists(file_path)
-    storage.save(file_path, content)
+    storage.save(content, file_path)
     assert storage.exists(file_path)
 
 
@@ -23,7 +23,7 @@ def test_get_content(tmp_path):
     file_path = "test_file.txt"
     content = b"Hello, again!"
 
-    storage.save(file_path, content)
+    storage.save(content, file_path)
     retrieved_content = storage.get(file_path)
     assert retrieved_content == content
 
@@ -36,7 +36,7 @@ def test_delete_file(tmp_path):
     file_path = "file_to_delete.txt"
     content = b"Delete me."
 
-    storage.save(file_path, content)
+    storage.save(content, file_path)
     assert storage.exists(file_path)
 
     storage.delete(file_path)

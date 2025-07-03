@@ -11,7 +11,7 @@ def test_simple_txt_processor(tmp_path):
     storage = LocalStorage(base_path=str(tmp_path))
     file_path = "test.txt"
     file_content = "First line.\nSecond line.\n\nThird line."
-    storage.save(file_path, file_content.encode("utf-8"))
+    storage.save(file_content.encode("utf-8"), file_path)
 
     # 2. Create a NexusFile object pointing to the test file
     nexus_file = NexusFile(file_name="test.txt", file_path=file_path)

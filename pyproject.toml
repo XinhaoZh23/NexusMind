@@ -37,3 +37,4 @@ build-backend = "poetry.core.masonry.api"
 pythonpath = [
   "."
 ]
+norecursedirs = ["postgres_data", "minio_data", "redis_data", ".venv", "storage"]

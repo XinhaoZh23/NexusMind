@@ -13,7 +13,7 @@ class CoreConfig(BaseConfig):
     # The model name to use for language model interactions.
     # This should correspond to a model supported by litellm.
     # Example: "openai/gpt-4", "anthropic/claude-2", "google/gemini-pro"
-    llm_model_name: str = "openai/gpt-4"
+    llm_model_name: str = "gpt-4o"
 
     # The temperature for the language model, controlling creativity.
     temperature: float = 0.7
@@ -41,4 +41,4 @@ class CoreConfig(BaseConfig):
     # The base path for local file storage.
     storage_base_path: str = "storage"
 
-    api_keys: list[str] = []
+    api_keys: list[str] = [] 
