@@ -566,4 +566,19 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 这将确保所有下游代码都能收到符合其接口预期的、可被正确序列化的真实数据对象。
 
 **反馈:**
+* **2025-07-06**: **已完成**。此修复在方向上完全正确，但实施不完整，因为它在创建模拟的 `Chunk` 对象时，遗漏了必需的 `document_id` 字段，导致了 `ValidationError`。
+
+#### **第三十四步 (最终完美修复): 为模拟数据提供所有必需字段**
+
+**问题:**
+`test_async_upload_and_chat` 测试在设置阶段就失败了，报告 `pydantic_core.ValidationError: document_id Field required`。
+
+**根本原因分析:**
+问题的最终根源在于 `tests/test_api.py` 中创建的模拟 `Chunk` 对象不完整。Pydantic 模型要求在实例化时必须提供所有没有默认值的字段。我们遗漏了 `document_id` 字段，导致 Pydantic 在验证数据时抛出了致命的 `ValidationError`。
+
+**解决方案 (完美修复):**
+修改 `tests/test_api.py` 中的 `test_async_upload_and_chat` 函数：
+1.  在创建 `mock_chunk` 实例时，为其提供一个有效的 `document_id` 值。我们可以简单地使用 `str(uuid.uuid4())` 来生成一个随机的 ID。
+
+**反馈:**
 * **2025-07-06**: 待执行。

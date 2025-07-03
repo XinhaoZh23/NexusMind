@@ -109,7 +109,10 @@ def test_async_upload_and_chat(
     processor_mock = MagicMock()
     # Return a real, serializable Chunk object instead of a raw MagicMock
     mock_chunk = Chunk(
-        content="This is a mock chunk.", page_number=1, file_name="test_doc.txt"
+        content="This is a mock chunk.",
+        page_number=1,
+        file_name="test_doc.txt",
+        document_id=str(uuid.uuid4()),
     )
     processor_mock.process.return_value = [mock_chunk]
 
