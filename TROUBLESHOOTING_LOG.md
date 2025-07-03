@@ -466,7 +466,7 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 2.  更关键的是，`tests/test_api.py` 在运行测试时，没有使用 FastAPI 的 `dependency_overrides` 功能来用一个**模拟的 S3 客户端**替换掉真实的依赖。因此，测试发起 API 调用时，应用会创建真实的 `boto3` 客户端，该客户端尝试连接云端 S3 服务并因此失败，返回 `SlowDownRead` 错误。
 
 **解决方案 (分步进行):**
-当前步骤的目标是清理代码，为下一步修复测试做好准备。
+当前步骤的目标是清理代码，为下一步修复做好准备。
 1.  **清理 `main.py`**: 删除 `main.py` 中本地定义的 `get_s3_storage` 函数。
 2.  **依赖统一**: 确保 `main.py` 依赖于从 `src/nexusmind/storage/s3_storage.py` 导入的 `get_s3_storage` 函数作为唯一的依赖项来源。
 
@@ -482,11 +482,24 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 错误的根源在 `src/nexusmind/tasks.py`。当 Celery worker 在后台执行文件处理任务时，它需要创建一个 `S3Storage` 实例来下载文件内容。然而，任务中的辅助函数 `setup_processor_registry` 仍然在使用旧的、无参数的方式调用 `S3Storage()`。这与我们重构后需要注入 `config` 和 `s3_client` 的新构造函数不匹配，因此导致了 `TypeError`。
 
 **解决方案 (最小化修改):**
-重构 `src/nexusmind/tasks.py` 中的 `setup_processor_registry` 辅助函数。它需要被修改，以完整地创建并配置 `S3Storage` 实例：
-1.  从 `nexusmind.config` 导入并调用 `get_core_config` 来获取配置。
-2.  导入 `boto3`。
-3.  使用配置信息创建 `boto3` 客户端。
-4.  用创建的 `config` 和 `s3_client` 来正确地实例化 `S3Storage`。
+重构 `src/nexusmind/tasks.py` 中的 `setup_processor_registry` 辅助函数。它需要被修改，以完整地创建并配置 `S3Storage` 实例。
+
+**反馈:**
+* **2025-07-06**: **已完成**。此修复成功解决了 Celery 任务中的 `TypeError`，使任务能够运行，并暴露了数据处理流程中的下一个错误。
+
+#### **第二十九步: 在 S3Storage 中实现文件读取逻辑**
+
+**问题:**
+`test_async_upload_and_chat` 测试失败，API 返回 500 错误。后台日志显示，在文件处理器中发生了 `AttributeError: 'NoneType' object has no attribute 'decode'`。
+
+**根本原因分析:**
+这是整个失败链的第一个环节。Celery 任务调用 `SimpleTxtProcessor`，后者又调用 `storage.get(file_path)` 来获取文件内容。然而，`src/nexusmind/storage/s3_storage.py` 中的 `get` 方法只是一个空的 `pass` 占位符，它隐式返回 `None`。处理器在接收到 `None` 并试图对其执行 `.decode()` 操作时，便会崩溃并抛出 `AttributeError`。
+
+**解决方案 (最小化修改):**
+在 `src/nexusmind/storage/s3_storage.py` 文件中，为 `S3Storage` 类实现 `get` 方法：
+1.  调用 `self.s3_client.get_object()` 从 S3 获取文件。
+2.  读取响应中的 `Body` StreamingBody 对象。
+3.  返回 `Body` 中的字节内容。
 
 **反馈:**
 * **2025-07-06**: 待执行。

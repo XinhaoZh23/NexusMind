@@ -39,7 +39,17 @@ class S3Storage(StorageBase):
             raise
 
     def get(self, file_path: str) -> bytes:
-        pass
+        try:
+            response = self.s3_client.get_object(
+                Bucket=self.config.bucket, Key=file_path
+            )
+            logger.info(
+                f"File '{file_path}' retrieved from S3 bucket '{self.config.bucket}'."
+            )
+            return response["Body"].read()
+        except ClientError as e:
+            logger.error(f"Failed to get file '{file_path}' from S3: {e}")
+            raise
 
     def delete(self, file_path: str) -> None:
         pass
