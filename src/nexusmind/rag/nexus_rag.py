@@ -1,8 +1,8 @@
 from typing import List
 
-from core.nexusmind.brain.brain import Brain
-from core.nexusmind.logger import logger
-from core.nexusmind.processor.splitter import Chunk
+from ..brain.brain import Brain
+from ..logger import logger
+from ..processor.splitter import Chunk
 
 
 class NexusRAG:

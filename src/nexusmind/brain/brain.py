@@ -3,10 +3,12 @@ from typing import Dict, List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from core.nexusmind.llm.llm_endpoint import LLMEndpoint
-from core.nexusmind.logger import logger
-from core.nexusmind.storage.faiss_vector_store import FaissVectorStore
-from core.nexusmind.storage.vector_store_base import VectorStoreBase
+from ..llm.llm_endpoint import LLMEndpoint
+from ..logger import get_logger
+from ..storage.faiss_vector_store import FaissVectorStore
+from ..storage.vector_store_base import VectorStoreBase
+
+logger = get_logger(__name__)
 
 
 class Brain(BaseModel):

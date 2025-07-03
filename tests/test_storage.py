@@ -1,6 +1,21 @@
+import os
+import tempfile
+from pathlib import Path
+from unittest.mock import MagicMock, patch
+
 import pytest
 
-from core.nexusmind.storage.local_storage import LocalStorage
+from nexusmind.storage.local_storage import LocalStorage
+from nexusmind.storage.s3_storage import S3Storage
+
+
+@pytest.fixture
+def local_storage():
+    """
+    Fixture to create a LocalStorage object.
+    """
+    base_path = tempfile.gettempdir()
+    return LocalStorage(base_path=base_path)
 
 
 def test_save_and_exists(tmp_path):

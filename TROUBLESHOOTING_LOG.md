@@ -3,3 +3,79 @@
 本文档用于记录和系统性地排查在开发和测试过程中遇到的问题。
  
 ---
+
+## 2025-07-03: CI `ModuleNotFoundError`
+
+**问题描述:**
+CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No module named 'core.nexusmind.storage.s3_storage'`。此问题在本地环境中可能因不健壮的 `sys.path.insert` 路径修改而未被发现。
+
+**根本原因分析:**
+项目采用了非标准的 `core/` 目录结构，依赖于不稳定的路径修改技巧来工作，导致在不同环境（本地 vs CI）下的行为不一致。
+
+**解决方案:**
+采纳 Python 社区的最佳实践，将项目重构为标准的 `src` 布局，从根本上解决路径发现问题。
+
+### **执行计划**
+
+#### **第一步：创建 `src` 目录并移动源代码**
+
+**操作:**
+将 `core/nexusmind` 源代码目录移动到新的 `src/nexusmind` 位置，并清理旧的目录结构。这被视为重构的第一阶段。
+
+**反馈:**
+* **2025-07-03**: 已执行。源代码已移动到 `src/` 目录下。
+
+#### **第二步：更新 `pyproject.toml` 以识别新布局**
+
+**操作:**
+修改 `pyproject.toml`，告知 Poetry 新的 `src` 布局。
+
+**反馈:**
+* **2025-07-03**: 已执行。`poetry check` 通过。
+
+#### **第三步：移除所有测试文件中的路径修改代码 (关键步骤)**
+
+**操作:**
+遍历所有测试文件，删除不健壮的 `sys.path.insert()` 路径修改代码。
+
+**反馈:**
+* **2025-07-03**: 待执行。
+
+#### **第四步：修正 `src/nexusmind/` 目录内部所有文件之间的相互导入语句**
+
+**操作:**
+由于 `sys.path` 已被移除，现在需要修正 `src/nexusmind/` 目录内部所有文件之间的相互导入语句，将所有 `from core.nexusmind...` 替换为正确的相对或绝对导入。
+
+**反馈:**
+* **2025-07-03**: 已修复 `src/nexusmind/celery_app.py`。`pytest` 错误链深入一层，暴露了 `src/nexusmind/config.py` 中的新导入问题。
+* **2025-07-03**: 已修复 `src/nexusmind/config.py` 的相对导入路径。新暴露的问题是 `ImportError`，表明 `base_config.py` 文件中缺少 `MinioConfig` 等类的定义。
+* **2025-07-03**: 已在 `src/nexusmind/base_config.py` 中添加缺失的配置类。新的导入瓶颈转移到了项目根目录的 `main.py` 文件。
+* **2025-07-03**: 已修复 `main.py` 中的所有导入语句。`pytest` 错误链继续深入，暴露出 `src/nexusmind/brain/brain.py` 的导入问题。
+* **2025-07-03**: 已修复 `brain.py` 中对 `llm_endpoint` 的导入。下一个待修复的导入在同一个文件内：`logger`。
+* **2025-07-03**: 已修复 `brain.py` 中对 `logger` 的相对路径导入。新暴露的问题是 `ImportError`，表明 `logger.py` 文件中缺少 `get_logger` 函数的定义。
+* **2025-07-03**: 已在 `logger.py` 中添加 `get_logger` 函数。`pytest` 错误链继续深入，暴露了 `storage/faiss_vector_store.py` 中的导入问题。
+* **2025-07-03**: 已修复 `faiss_vector_store.py` 的导入。新的 `ModuleNotFoundError` 暴露在其基类 `vector_store_base.py` 中。
+* **2025-07-03**: 已修复 `vector_store_base.py` 的导入。错误链回跳，暴露出 `brain.py` 中存在一个遗漏的、未被修复的旧式导入。
+* **2025-07-03**: 已彻底修复 `brain.py` 的所有导入。`test_api.py` 的 `ModuleNotFoundError` 已解决，新问题为 `ImportError`，因 `config.py` 缺少 `get_core_config` 函数。
+* **2025-07-03**: 已修复 `config.py` 中 `get_core_config` 函数缺失的问题。
+* **2025-07-03**: 已修复 `tests/test_brain.py` 中的 `IndentationError`。
+* **2025-07-03**: 已修复 `tests/test_nexus_file.py` 的导入问题并移除空测试。
+* **2025-07-03**: 已修复 `tests/test_config.py` 的 `NameError: name 'os' is not defined` 问题。
+* **2025-07-03**: 已修复 `src/nexusmind/database.py` 的导入问题。
+* **2025-07-03**: 已修复 `src/nexusmind/processor/implementations/simple_txt_processor.py` 的导入问题。
+* **2025-07-03**: 已修复 `src/nexusmind/processor/processor_base.py` 的导入问题，此举暴露了 `registry.py` 的导入错误。
+* **2025-07-03**: 已修复 `src/nexusmind/processor/registry.py` 的导入。`tests/processor/test_registry.py` 的错误类型转变为 `ImportError`，因缺少 `get_processor_registry` 函数。同时，`test_api.py` 的错误链指向 `nexus_rag.py`。
+* **2025-07-03**: 已在 `registry.py` 中添加 `get_processor_registry` 函数。`test_registry.py` 的错误转移为 `ImportError`，因其试图导入一个不存在的 `register_processor` 函数。
+* **2025-07-03**: 已修复 `tests/processor/test_registry.py` 的导入逻辑错误。`pytest` 错误总数减少至 6 个。
+* **2025-07-03**: 已修复 `src/nexusmind/rag/nexus_rag.py` 的导入问题。`test_api.py` 的错误链深入，暴露出 `s3_storage.py` 模块丢失的问题。
+* **2025-07-03**: 已重新创建并补全 `src/nexusmind/storage/s3_storage.py` 文件。
+* **2025-07-03**: 已修复 `src/nexusmind/tasks.py` 的导入问题。`test_api.py` 的错误类型转变为 `ImportError`，因 `main.py` 试图导入一个不存在的 `process_file_task` 函数。
+* **2025-07-03**: 已修复 `main.py` 中的导入命名错误。`tests/test_api.py` 的收集时错误已完全解决，`pytest` 错误总数减少至 5 个。
+* **2025-07-03**: 已修复 `src/nexusmind/brain/serialization.py` 的导入问题。此举并未完全解决 `brain` 相关的错误，`test_brain.py` 的错误转移为 `ImportError`，因缺少 `BrainVector` 定义。
+* **2025-07-03**: 经调查 `06_BRAIN.md`，确认 `BrainVector` 和 `serialize_brain` 并非原始设计的一部分，根源是 `tests/test_brain.py` 的导入和逻辑与实现脱节。
+* **2025-07-03**: 已彻底修正 `tests/test_brain.py` 的导入和内部逻辑，并清除了 `serialization.py` 中冗余的代码。`pytest` 错误总数减少至 4 个。
+* **2025-07-03**: 已修复 `tests/test_nexus_rag.py` 的导入问题，`pytest` 错误总数减少至 3 个。
+* **2025-07-03**: 已修复 `src/nexusmind/storage/local_storage.py` 的导入问题。`test_storage.py` 的收集错误已解决，`pytest` 错误总数减少至 2 个。
+* **2025-07-03**: 已修复 `tests/test_vector_store.py` 的导入问题。`pytest` 错误总数减少至 1 个。
+
+---

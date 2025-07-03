@@ -2,9 +2,9 @@
 name = "nexusmind"
 version = "0.1.0"
 description = "NEXUSMIND - A RAG system development project."
-authors = ["Your Name <you@example.com>"]
+authors = ["Xinhao <zhangxinhao_main@163.com>"]
 readme = "README.md"
-packages = [{include = "core"}]
+packages = [{include = "nexusmind", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9"

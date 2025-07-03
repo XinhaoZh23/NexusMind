@@ -2,17 +2,17 @@ from uuid import UUID
 
 from sqlmodel import Session, select
 
-from core.nexusmind.brain.brain import Brain
-from core.nexusmind.celery_app import app
-from core.nexusmind.database import engine
-from core.nexusmind.files.file import NexusFile
-from core.nexusmind.logger import logger
-from core.nexusmind.models.files import File, FileStatusEnum
-from core.nexusmind.processor.implementations.simple_txt_processor import (
+from .brain.brain import Brain
+from .celery_app import app
+from .database import engine
+from .files.file import NexusFile
+from .logger import logger
+from .models.files import File, FileStatusEnum
+from .processor.implementations.simple_txt_processor import (
     SimpleTxtProcessor,
 )
-from core.nexusmind.processor.registry import ProcessorRegistry
-from core.nexusmind.storage.s3_storage import S3Storage
+from .processor.registry import ProcessorRegistry
+from .storage.s3_storage import S3Storage
 
 
 def setup_processor_registry() -> ProcessorRegistry:

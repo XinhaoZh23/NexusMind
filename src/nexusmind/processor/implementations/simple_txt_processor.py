@@ -1,10 +1,10 @@
 from typing import List
 
-from core.nexusmind.files.file import NexusFile
-from core.nexusmind.logger import logger
-from core.nexusmind.processor.processor_base import ProcessorBase
-from core.nexusmind.processor.splitter import Chunk
-from core.nexusmind.storage.storage_base import StorageBase
+from ...files.file import NexusFile
+from ...logger import logger
+from ..processor_base import ProcessorBase
+from ..splitter import Chunk
+from ...storage.storage_base import StorageBase
 
 
 class SimpleTxtProcessor(ProcessorBase):

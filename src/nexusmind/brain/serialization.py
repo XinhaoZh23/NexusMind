@@ -2,7 +2,7 @@ import json
 import uuid
 from pathlib import Path
 
-from core.nexusmind.brain.brain import Brain
+from .brain import Brain
 
 BRAIN_STORAGE_PATH = Path("brains")
 

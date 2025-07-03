@@ -1,16 +1,11 @@
-import sys
 import uuid
-from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-# Add project root to path to allow imports
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
-from core.nexusmind.celery_app import app as celery_app  # noqa: E402
-from main import app, get_core_config  # noqa: E402
+from nexusmind.celery_app import app as celery_app
+from main import app, get_core_config
 
 
 @pytest.fixture

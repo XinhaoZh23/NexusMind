@@ -2,8 +2,15 @@ from unittest.mock import Mock
 
 import pytest
 
-from core.nexusmind.processor.processor_base import ProcessorBase
-from core.nexusmind.processor.registry import ProcessorRegistry
+from nexusmind.processor.processor_base import ProcessorBase
+from nexusmind.processor.registry import (
+    ProcessorRegistry,
+    get_processor_registry,
+)
+
+
+class MockProcessor(ProcessorBase):
+    """A mock processor for testing purposes."""
 
 
 def test_register_and_get_processor():

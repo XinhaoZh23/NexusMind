@@ -1,6 +1,8 @@
+import os
+from functools import lru_cache
 from pydantic_settings import SettingsConfigDict
 
-from core.nexusmind.base_config import BaseConfig
+from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
 
 
 class CoreConfig(BaseConfig):
@@ -14,7 +16,7 @@ class CoreConfig(BaseConfig):
     # The model name to use for language model interactions.
     # This should correspond to a model supported by litellm.
     # Example: "openai/gpt-4", "anthropic/claude-2", "google/gemini-pro"
-    llm_model_name: str = "gpt-4o"
+    llm_model_name: str = "gpt-4"
 
     # The temperature for the language model, controlling creativity.
     temperature: float = 0.7
@@ -42,4 +44,21 @@ class CoreConfig(BaseConfig):
     # The base path for local file storage.
     storage_base_path: str = "storage"
 
+    # Celery settings
+    celery_broker_url: str = "redis://localhost:6379/0"
+    celery_result_backend: str = "redis://localhost:6379/0"
+    task_track_started: bool = True
+
     api_keys: list[str] = []
+
+    postgres: PostgresConfig = PostgresConfig()
+    redis: RedisConfig = RedisConfig()
+    minio: MinioConfig = MinioConfig()
+
+
+@lru_cache()
+def get_core_config() -> CoreConfig:
+    """
+    Get the core config, cached to avoid multiple loads.
+    """
+    return CoreConfig()

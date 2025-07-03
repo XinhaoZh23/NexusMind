@@ -9,20 +9,20 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from core.nexusmind.brain.brain import Brain
-from core.nexusmind.celery_app import app as celery_app
-from core.nexusmind.config import CoreConfig
-from core.nexusmind.database import create_db_and_tables, get_session
-from core.nexusmind.logger import logger
-from core.nexusmind.models.files import File as FileModel
-from core.nexusmind.models.files import FileStatusEnum
-from core.nexusmind.processor.implementations.simple_txt_processor import (
+from nexusmind.brain.brain import Brain
+from nexusmind.celery_app import app as celery_app
+from nexusmind.config import CoreConfig, get_core_config
+from nexusmind.database import create_db_and_tables, engine, get_session
+from nexusmind.logger import get_logger
+from nexusmind.models.files import File as FileModel
+from nexusmind.models.files import FileStatusEnum
+from nexusmind.processor.implementations.simple_txt_processor import (
     SimpleTxtProcessor,
 )
-from core.nexusmind.processor.registry import ProcessorRegistry
-from core.nexusmind.rag.nexus_rag import NexusRAG
-from core.nexusmind.storage.s3_storage import S3Storage
-from core.nexusmind.tasks import process_file
+from nexusmind.processor.registry import ProcessorRegistry
+from nexusmind.rag.nexus_rag import NexusRAG
+from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
+from nexusmind.tasks import process_file
 
 # --- Security and App Initialization ---
 API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=True)

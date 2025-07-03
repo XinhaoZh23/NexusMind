@@ -1,12 +1,12 @@
 import uuid
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock, patch
 
 import pytest
 
-from core.nexusmind.brain.brain import Brain
-from core.nexusmind.processor.splitter import Chunk
-from core.nexusmind.rag.nexus_rag import NexusRAG
-from core.nexusmind.storage.vector_store_base import VectorStoreBase
+from nexusmind.brain.brain import Brain
+from nexusmind.processor.splitter import Chunk
+from nexusmind.rag.nexus_rag import NexusRAG
+from nexusmind.storage.vector_store_base import VectorStoreBase
 
 
 @pytest.fixture
@@ -59,3 +59,10 @@ def test_rag_pipeline_uses_vector_store(mock_brain):
 
     # 4. Assert return value
     assert answer == "This is the final answer."
+
+
+def test_nexus_rag_initialization():
+    # ...
+    # Test cases for NexusRAG initialization
+    # ...
+    pass

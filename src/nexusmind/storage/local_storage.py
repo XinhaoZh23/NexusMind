@@ -3,7 +3,7 @@ import uuid
 from pathlib import Path
 from typing import Optional
 
-from core.nexusmind.storage.storage_base import StorageBase
+from .storage_base import StorageBase
 
 
 class LocalStorage(StorageBase):

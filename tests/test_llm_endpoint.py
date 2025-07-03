@@ -1,9 +1,8 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from core.nexusmind.config import CoreConfig
-from core.nexusmind.llm.llm_endpoint import LLMEndpoint
+from nexusmind.llm.llm_endpoint import LLMEndpoint
 
 
 @pytest.fixture
@@ -92,3 +91,7 @@ def test_get_chat_completion_error_handling(mock_completion, core_config):
 
     # Assert
     assert response == ""
+
+
+def test_llm_endpoint_initialization():
+    """Tests the initialization of the LLMEndpoint."""

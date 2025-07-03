@@ -1,7 +1,7 @@
 from sqlmodel import Session, create_engine
 
-from core.nexusmind.config import CoreConfig
-from core.nexusmind.logger import logger
+from .config import CoreConfig
+from .logger import logger
 
 # Load configuration
 config = CoreConfig()

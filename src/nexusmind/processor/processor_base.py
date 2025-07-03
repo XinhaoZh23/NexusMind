@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from core.nexusmind.files.file import NexusFile
-from core.nexusmind.processor.splitter import Chunk
+from ..files.file import NexusFile
+from .splitter import Chunk
 
 
 class ProcessorBase(ABC):

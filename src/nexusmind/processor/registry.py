@@ -1,7 +1,8 @@
 import os
+from functools import lru_cache
 from typing import Dict
 
-from core.nexusmind.processor.processor_base import ProcessorBase
+from .processor_base import ProcessorBase
 
 
 class ProcessorRegistry:
@@ -35,3 +36,11 @@ class ProcessorRegistry:
                 f"No processor registered for file type '{normalized_ext}'"
             )
         return processor
+
+
+@lru_cache(maxsize=None)
+def get_processor_registry() -> ProcessorRegistry:
+    """
+    Factory function to get the singleton instance of the ProcessorRegistry.
+    """
+    return ProcessorRegistry()

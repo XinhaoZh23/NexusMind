@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
 
-from core.nexusmind.processor.splitter import Chunk
+from ..processor.splitter import Chunk
 
 
 class VectorStoreBase(ABC):

@@ -1,8 +1,10 @@
-from core.nexusmind.files.file import NexusFile
-from core.nexusmind.processor.implementations.simple_txt_processor import (
+import pytest
+
+from nexusmind.files.file import NexusFile
+from nexusmind.processor.implementations.simple_txt_processor import (
     SimpleTxtProcessor,
 )
-from core.nexusmind.storage.local_storage import LocalStorage
+from nexusmind.storage.local_storage import LocalStorage
 
 
 def test_simple_txt_processor(tmp_path):

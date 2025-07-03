@@ -1,14 +1,16 @@
-import uuid
+from uuid import UUID
 
-from core.nexusmind.files.file import NexusFile
-from core.nexusmind.processor.splitter import Chunk
+import pytest
+
+from nexusmind.files.file import NexusFile
+from nexusmind.processor.splitter import Chunk
 
 
 def test_nexus_file_instantiation():
     """
     Test that a NexusFile instance can be created with valid data.
     """
-    file_id = uuid.uuid4()
+    file_id = UUID(int=1)
     file = NexusFile(
         file_id=file_id,
         file_name="test.txt",
@@ -25,8 +27,8 @@ def test_chunk_instantiation():
     """
     Test that a Chunk instance can be created successfully.
     """
-    chunk_id = uuid.uuid4()
-    document_id = uuid.uuid4()
+    chunk_id = UUID(int=2)
+    document_id = UUID(int=3)
     chunk = Chunk(
         chunk_id=chunk_id,
         document_id=document_id,
@@ -50,7 +52,7 @@ def test_metadata_handling():
     assert file.metadata["new_key"] == "new_value"
 
     # Test Chunk metadata
-    doc_id = uuid.uuid4()
+    doc_id = UUID(int=4)
     chunk = Chunk(document_id=doc_id, content="content")
     assert chunk.metadata == {}  # Should default to empty dict
     chunk.metadata["chunk_source"] = "splitter"

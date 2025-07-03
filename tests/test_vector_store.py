@@ -1,12 +1,15 @@
+import os
+import tempfile
 import uuid
-from unittest.mock import Mock
+from unittest.mock import Mock, MagicMock
 
 import numpy as np
 import pytest
 
-from core.nexusmind.llm.llm_endpoint import LLMEndpoint
-from core.nexusmind.processor.splitter import Chunk
-from core.nexusmind.storage.faiss_vector_store import FaissVectorStore
+from nexusmind.storage.faiss_vector_store import FaissVectorStore
+from nexusmind.storage.vector_store_base import VectorStoreBase
+from nexusmind.llm.llm_endpoint import LLMEndpoint
+from nexusmind.processor.splitter import Chunk
 
 # Predefined vectors for testing
 VECTOR_CAT = np.array([0.1, 0.1, 0.8]).astype("float32")
@@ -83,3 +86,7 @@ def test_empty_search(mock_llm_endpoint):
     vector_store = FaissVectorStore(llm_endpoint=mock_llm_endpoint)
     results = vector_store.similarity_search(query="anything")
     assert results == []
+
+
+def create_mock_embedding_and_chunk(embedding_dim=128):
+    """Helper function to create a mock embedding and chunk."""

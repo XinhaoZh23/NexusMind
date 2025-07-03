@@ -1,5 +1,15 @@
-from core.nexusmind.brain.brain import Brain
-from core.nexusmind.brain.serialization import BRAIN_STORAGE_PATH
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from nexusmind.brain.brain import Brain
+from nexusmind.brain.serialization import BRAIN_STORAGE_PATH, load_brain, save_brain
+from nexusmind.llm.llm_endpoint import LLMEndpoint
+
+
+@pytest.fixture
+def mock_llm_endpoint():
+    pass
 
 
 def test_brain_initialization():
@@ -34,9 +44,9 @@ def test_save_and_load_brain(tmp_path):
     original_path = BRAIN_STORAGE_PATH
     try:
         # Ugly but effective for testing: modify the global path
-        import core.nexusmind.brain.serialization
+        from nexusmind.brain import serialization
 
-        core.nexusmind.brain.serialization.BRAIN_STORAGE_PATH = tmp_path
+        serialization.BRAIN_STORAGE_PATH = tmp_path
 
         # 1. Create and modify a brain instance
         brain_to_save = Brain(
@@ -63,6 +73,6 @@ def test_save_and_load_brain(tmp_path):
 
     finally:
         # Restore the original path to avoid side effects
-        import core.nexusmind.brain.serialization
+        from nexusmind.brain import serialization
 
-        core.nexusmind.brain.serialization.BRAIN_STORAGE_PATH = original_path
+        serialization.BRAIN_STORAGE_PATH = original_path
