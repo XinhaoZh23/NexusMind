@@ -232,4 +232,25 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 3.  使用 `config.postgres.get_db_url()` 方法来动态生成数据库连接字符串，并用它来创建 `engine`。
 
 **反馈:**
+* **2025-07-06**: 已修复。此举成功解决了数据库密码认证失败的问题，但暴露了新的问题：`relation "file" does not exist`。
+
+#### **第十三步：确保测试时创建数据库表**
+
+**问题:**
+`test_api.py` 测试失败，日志显示 `sqlalchemy.exc.ProgrammingError: (psycopg2.errors.UndefinedTable) relation "file" does not exist`。
+
+**根本原因分析:**
+我们成功连接到了数据库，但数据库是空的。`main.py` 在应用启动时 (`@app.on_event("startup")`) 会调用 `create_db_and_tables`，但 `pytest` 使用的 `TestClient` 默认不会触发应用的生命周期（startup/shutdown）事件，因此该函数从未被执行。
+
+**上次失败的尝试与教训:**
+我们之前试图通过引入一个复杂的、使用独立测试数据库的 `conftest.py` fixture 来解决这个问题。这个方案过于庞大和激进，它：
+1.  做出了不当的假设（如数据库密码），导致了新的连接错误。
+2.  影响了所有测试，造成了大规模的失败，违反了"一次只解决一个问题"的原则。
+3.  偏离了小步快跑、逐步修复的策略。
+**今后的修改将严格遵循小步迭代的原则，避免进行大规模的结构性改动。**
+
+**新的解决方案 (最小化修改):**
+修改 `tests/test_api.py` 中现有的 `api_client` fixture。通过将 `TestClient` 的实例化方式从 `TestClient(app)` 改为在 `with` 语句中使用 (`with TestClient(app) as client: yield client`)，我们可以指示 `pytest` 正确地处理 FastAPI 应用的生命周期事件，从而确保 `create_db_and_tables` 在测试运行前被调用。这是一个目标明确、影响范围最小的修复方案。
+
+**反馈:**
 * **2025-07-06**: 待执行。
