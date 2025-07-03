@@ -3,10 +3,7 @@ from unittest.mock import Mock
 import pytest
 
 from nexusmind.processor.processor_base import ProcessorBase
-from nexusmind.processor.registry import (
-    ProcessorRegistry,
-    get_processor_registry,
-)
+from nexusmind.processor.registry import ProcessorRegistry, get_processor_registry
 
 
 class MockProcessor(ProcessorBase):

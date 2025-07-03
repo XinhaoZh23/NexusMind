@@ -32,7 +32,9 @@ class S3Storage(StorageBase):
             self.s3_client.put_object(
                 Bucket=self.config.bucket, Key=file_path, Body=content
             )
-            logger.info(f"File '{file_path}' saved to S3 bucket '{self.config.bucket}'.")
+            logger.info(
+                f"File '{file_path}' saved to S3 bucket '{self.config.bucket}'."
+            )
             return file_path
         except ClientError as e:
             logger.error(f"Failed to save file '{file_path}' to S3: {e}")
@@ -65,11 +67,11 @@ def get_s3_storage() -> S3Storage:
     client_kwargs = {
         "aws_access_key_id": config.access_key,
         "aws_secret_access_key": config.secret_key.get_secret_value(),
-        "region_name": "us-east-1"
+        "region_name": "us-east-1",
     }
     if config.endpoint:
         client_kwargs["endpoint_url"] = config.endpoint
-    
+
     s3_client = boto3.client("s3", **client_kwargs)
 
-    return S3Storage(config=config, s3_client=s3_client) 
+    return S3Storage(config=config, s3_client=s3_client)

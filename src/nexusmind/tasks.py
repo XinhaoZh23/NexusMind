@@ -1,6 +1,6 @@
 from uuid import UUID
-import boto3
 
+import boto3
 from sqlmodel import Session, select
 
 from .brain.brain import Brain
@@ -10,9 +10,7 @@ from .database import engine
 from .files.file import NexusFile
 from .logger import logger
 from .models.files import File, FileStatusEnum
-from .processor.implementations.simple_txt_processor import (
-    SimpleTxtProcessor,
-)
+from .processor.implementations.simple_txt_processor import SimpleTxtProcessor
 from .processor.registry import ProcessorRegistry
 from .storage.s3_storage import S3Storage
 

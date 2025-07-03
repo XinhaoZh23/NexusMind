@@ -1,7 +1,7 @@
+import json
 import logging
 import os
 import pickle
-import json
 from pathlib import Path
 from typing import List, Optional
 
@@ -108,9 +108,7 @@ class FaissVectorStore(VectorStoreBase):
         with open(chunk_path, "w") as f:
             # Explicitly dump each chunk to its JSON string representation.
             # This is more robust than dumping dicts with a default handler.
-            chunk_json_list = [
-                chunk.model_dump_json() for chunk in self.index_to_chunk
-            ]
+            chunk_json_list = [chunk.model_dump_json() for chunk in self.index_to_chunk]
             json.dump(chunk_json_list, f, indent=4)
 
         logger.info(f"Saved {len(self.index_to_chunk)} chunk metadata to {chunk_path}")
@@ -132,6 +130,5 @@ class FaissVectorStore(VectorStoreBase):
                 # Each item in the list is a JSON string, so we need to parse it
                 # back into a Chunk object using Pydantic's validator.
                 self.index_to_chunk = [
-                    Chunk.model_validate_json(data_str)
-                    for data_str in chunk_json_list
+                    Chunk.model_validate_json(data_str) for data_str in chunk_json_list
                 ]

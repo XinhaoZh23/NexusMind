@@ -2,9 +2,9 @@ from typing import List
 
 from ...files.file import NexusFile
 from ...logger import logger
+from ...storage.storage_base import StorageBase
 from ..processor_base import ProcessorBase
 from ..splitter import Chunk
-from ...storage.storage_base import StorageBase
 
 
 class SimpleTxtProcessor(ProcessorBase):

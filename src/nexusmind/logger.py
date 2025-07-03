@@ -1,6 +1,6 @@
+import logging
 import os
 import sys
-import logging
 
 from loguru import logger
 
@@ -24,6 +24,7 @@ logger.add(
 # Export the configured logger for use in other modules
 __all__ = ["logger"]
 
+
 def get_logger(name: str) -> logging.Logger:
     """
     Get a logger with the specified name.
@@ -35,6 +36,7 @@ def get_logger(name: str) -> logging.Logger:
         The logger instance.
     """
     return logging.getLogger(name)
+
 
 # Configure loguru to intercept standard logging
 class InterceptHandler(logging.Handler):
@@ -54,6 +56,7 @@ class InterceptHandler(logging.Handler):
         logger.opt(depth=depth, exception=record.exc_info).log(
             level, record.getMessage()
         )
+
 
 # Setup standard logging to be intercepted by loguru
 logging.basicConfig(handlers=[InterceptHandler()], level=0)

@@ -1,15 +1,14 @@
 import os
 import tempfile
 import uuid
-from unittest.mock import Mock, MagicMock
+from unittest.mock import MagicMock, Mock
 
 import numpy as np
 import pytest
 
-from nexusmind.storage.faiss_vector_store import FaissVectorStore
-from nexusmind.storage.vector_store_base import VectorStoreBase
 from nexusmind.llm.llm_endpoint import LLMEndpoint
 from nexusmind.processor.splitter import Chunk
+from nexusmind.storage.faiss_vector_store import FaissVectorStore
 
 # Predefined vectors for testing
 VECTOR_CAT = np.array([0.1, 0.1, 0.8]).astype("float32")

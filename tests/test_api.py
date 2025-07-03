@@ -1,17 +1,17 @@
-import uuid
 import os
-import boto3
+import uuid
 from unittest.mock import MagicMock, patch
 
+import boto3
 import pytest
 from fastapi.testclient import TestClient
 from moto import mock_aws
 
-from nexusmind.celery_app import app as celery_app
 from main import app, get_core_config
-from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
 from nexusmind.base_config import MinioConfig
+from nexusmind.celery_app import app as celery_app
 from nexusmind.processor.splitter import Chunk
+from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
 from nexusmind.storage.storage_base import StorageBase
 
 
@@ -104,12 +104,12 @@ def test_async_upload_and_chat(
     # The api_client fixture already handles mocking for the API context.
     # This patch handles mocking for the background Celery task context.
     s3_storage_mock = api_client.app.dependency_overrides[get_s3_storage]()
-    
+
     # Configure the mock processor to use the same mock S3 storage
     processor_mock = MagicMock()
     # Return a real, serializable Chunk object instead of a raw MagicMock
     mock_chunk = Chunk(
-        content="This is a mock chunk.",
+        content=test_txt_content,
         page_number=1,
         file_name="test_doc.txt",
         document_id=str(uuid.uuid4()),

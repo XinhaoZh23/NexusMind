@@ -2,13 +2,13 @@ import uuid
 from functools import lru_cache
 from typing import Dict
 
+import boto3
 import uvicorn
 from celery.result import AsyncResult
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, UploadFile
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-import boto3
 
 from nexusmind.brain.brain import Brain
 from nexusmind.celery_app import app as celery_app
@@ -17,9 +17,7 @@ from nexusmind.database import create_db_and_tables, engine, get_session
 from nexusmind.logger import get_logger
 from nexusmind.models.files import File as FileModel
 from nexusmind.models.files import FileStatusEnum
-from nexusmind.processor.implementations.simple_txt_processor import (
-    SimpleTxtProcessor,
-)
+from nexusmind.processor.implementations.simple_txt_processor import SimpleTxtProcessor
 from nexusmind.processor.registry import ProcessorRegistry
 from nexusmind.rag.nexus_rag import NexusRAG
 from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
@@ -43,16 +41,16 @@ def on_startup():
     create_db_and_tables()
     # Ensure the S3 bucket exists by manually creating dependencies
     config = get_core_config()
-    
+
     # Mirror the logic from get_s3_storage to correctly instantiate
     client_kwargs = {
         "aws_access_key_id": config.minio.access_key,
         "aws_secret_access_key": config.minio.secret_key.get_secret_value(),
-        "region_name": "us-east-1"
+        "region_name": "us-east-1",
     }
     if config.minio.endpoint:
         client_kwargs["endpoint_url"] = config.minio.endpoint
-    
+
     s3_client = boto3.client("s3", **client_kwargs)
     s3_storage = S3Storage(config=config.minio, s3_client=s3_client)
 
@@ -82,7 +80,7 @@ TASK_STATUSES = {}
 
 def get_processor_registry(
     config: CoreConfig = Depends(get_core_config),
-    storage: S3Storage = Depends(get_s3_storage)
+    storage: S3Storage = Depends(get_s3_storage),
 ) -> ProcessorRegistry:
     """
     Dependency provider for the ProcessorRegistry.
