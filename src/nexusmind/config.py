@@ -20,13 +20,13 @@ class CoreConfig(BaseConfig):
     llm_model_name: str = Field("gpt-4o", description="Default LLM model name.")
 
     # The temperature for the language model, controlling creativity.
-    temperature: float = Field(0.5, description="LLM temperature.")
+    temperature: float = Field(0.7, description="LLM temperature.")
 
     # The maximum number of tokens to generate in a response.
     max_tokens: int = Field(1000, description="LLM max tokens.")
 
     # The API key for OpenAI services, loaded from OPENAI_API_KEY.
-    openai_api_key: str | None = None
+    openai_api_key: str = "sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
     # --- Database Configuration ---
     database_url: str = "postgresql://user:password@localhost:5432/nexusmind_db"

@@ -155,23 +155,12 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 `src/nexusmind/base_config.py` 中 `CoreConfig` 的默认模型 `llm_model_name` 被硬编码为 "gpt-4"，而测试用例期望的默认值是 "gpt-4o"。这是代码实现与测试期望之间的直接冲突。
 
 **解决方案:**
-以测试为准，将 `src/nexusmind/config.py` 中的默认模型修改为 `gpt-4o`。
+以测试为准，将 `src/nexusmind/config.py` 中的默认模型修改为 `gpt-4o`，并将默认 `temperature` 修改为 `0.7` 以匹配测试期望。
 
 **反馈:**
-* **2025-07-05**: 待执行。
+* **2025-07-05**: 已修复 `llm_model_name` 的断言错误，但新暴露出 `temperature` 的断言错误 (`assert 0.5 == 0.7`)。修复仍在进行中。
 
 #### **第八步：移除不当的缓存**
 
 **问题描述:**
-`tests/test_api.py` 失败，错误为 `TypeError: unhashable type: 'CoreConfig'`。
-
-**根本原因分析:**
-`main.py` 中的 `get_s3_storage` 和 `get_processor_registry` 函数都被 `@lru_cache` 装饰，但它们的参数包含了 `CoreConfig` 或 `S3Storage` 等不可哈希的 Pydantic/类实例。FastAPI 的依赖注入系统自身已经处理了单例和依赖缓存，这里的 `@lru_cache` 是多余且有害的。
-
-**解决方案:**
-移除 `get_s3_storage` 和 `get_processor_registry` 函数前的 `@lru_cache` 装饰器。
-
-**反馈:**
-* **2025-07-05**: 待执行。
-
----
+`
