@@ -502,4 +502,21 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 3.  返回 `Body` 中的字节内容。
 
 **反馈:**
+* **2025-07-06**: **已完成**。`get` 方法已实现。测试再次运行时，此举成功解决了 `AttributeError`，并将根本问题推进到了 `boto3` 客户端层面，确认了 S3 模拟从未生效。
+
+#### **第三十步 (最终修复): 使用依赖覆盖在测试中模拟 S3**
+
+**问题:**
+`test_async_upload_and_chat` 测试失败，API 返回 500 错误，日志显示 `botocore.exceptions.ClientError: An error occurred (InternalError) when calling the GetObject operation`。
+
+**根本原因分析:**
+我们已经彻底排除了应用代码中的所有 Bug。问题的最终根源在于测试环境的设置。`tests/test_api.py` 从未用一个**模拟的 S3 客户端**来替换应用在运行时创建的**真实 S3 客户端**。因此，无论是 FastAPI 端点还是 Celery 后台任务，都在尝试连接一个不存在的、真实的云端 S3 服务，导致了 `InternalError` 或 `SlowDownRead` 等网络错误。
+
+**解决方案 (终极方案):**
+我们将使用 FastAPI 官方推荐的测试方法：`dependency_overrides`。这将确保在测试的生命周期内，任何需要 `S3Storage` 的地方都会收到一个注入了**模拟 S3 客户端**的实例。
+1.  **创建模拟客户端 Fixture**: 在 `tests/test_api.py` 中，创建一个 `s3_mock_client` fixture，它使用 `moto` 来启动一个模拟 S3 服务，并 `yield` 一个配置为连接该模拟服务的 `boto3` 客户端。
+2.  **覆盖应用依赖**: 修改 `api_client` fixture。在创建 `TestClient` 之前，使用 `app.dependency_overrides[get_s3_storage] = ...` 来覆盖原始的依赖。这个新的依赖项将是一个返回注入了**模拟客户端**的 `S3Storage` 实例的函数。
+3.  **清理**: 移除所有不再需要的、尝试模拟 S3 的旧代码（如 `@mock_aws` 装饰器、`settings` fixture 中设置环境变量等）。
+
+**反馈:**
 * **2025-07-06**: 待执行。

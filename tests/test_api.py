@@ -81,11 +81,13 @@ def mock_embedding() -> list[float]:
 
 
 # --- E2E API Test ---
+@patch("nexusmind.tasks.setup_processor_registry")
 @patch("nexusmind.llm.llm_endpoint.litellm.completion")
 @patch("nexusmind.llm.llm_endpoint.litellm.embedding")
 def test_async_upload_and_chat(
     mock_embedding_call,
     mock_completion_call,
+    mock_setup_processor_registry,
     test_txt_content,
     mock_embedding,
     api_client,  # Note: settings is now used by api_client
@@ -96,7 +98,22 @@ def test_async_upload_and_chat(
     2. Ask a question about the file.
     3. Verify the response.
     """
-    # --- Mock external services ---
+    # --- Mock S3 and Processor dependencies for the Celery task ---
+    # The api_client fixture already handles mocking for the API context.
+    # This patch handles mocking for the background Celery task context.
+    s3_storage_mock = api_client.app.dependency_overrides[get_s3_storage]()
+    
+    # Configure the mock processor to use the same mock S3 storage
+    processor_mock = MagicMock()
+    processor_mock.process.return_value = [MagicMock()] # Return some mock chunks
+    
+    registry_mock = MagicMock()
+    registry_mock.get_processor.return_value = processor_mock
+
+    # Make the patched setup function return our fully mocked registry
+    mock_setup_processor_registry.return_value = registry_mock
+
+    # --- Mock LLM services ---
     mock_embedding_response = MagicMock()
     mock_embedding_response.data = [MagicMock()]
     mock_embedding_response.data[0].embedding = mock_embedding
