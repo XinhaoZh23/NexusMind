@@ -61,6 +61,9 @@ def mock_s3_environment(settings):
     os.environ["AWS_SECURITY_TOKEN"] = "testing"
     os.environ["AWS_SESSION_TOKEN"] = "testing"
     os.environ["AWS_DEFAULT_REGION"] = "us-east-1"  # Default region for moto
+    
+    # Remove endpoint URL to force boto3 to use moto's mock endpoint
+    os.environ.pop("AWS_ENDPOINT_URL", None)
 
     with mock_aws():
         # Create a mock bucket for the test

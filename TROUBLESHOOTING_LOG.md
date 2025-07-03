@@ -330,7 +330,7 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 将 `tests/test_api.py` 中的 `from moto import mock_s3` 修改为 `from moto.s3 import mock_s3`。
 
 **反馈:**
-* **2025-07-06**: **失败**。此修改依然导致 `ImportError`。这表明我对 `moto` v5+ 新的接口规范的理解是完全错误的，`mock_s3` 也不在 `moto.s3` 模块下。
+* **2025-07-06**: **成功**。此修改成功解决了 `ImportError`，使 `pytest` 能够进入测试执行阶段。但暴露了一个新的、在测试设置阶段发生的错误。
 
 **子步骤 3.2: 查阅文档并使用正确的 `moto` 装饰器**
 
@@ -344,6 +344,24 @@ CI/CD 流水线中的 `pytest` 步骤失败，报告 `ModuleNotFoundError: No mo
 我们将停止猜测，并通过网络搜索查阅 `moto` 的官方文档来确定正确的用法。
 1.  **调查**: 使用网络搜索找到 `moto` v5+ 中用于模拟 S3 的 pytest 装饰器的正确导入路径。
 2.  **修复**: 将 `tests/test_api.py` 中错误的导入语句和装饰器用法，替换为从文档中查到的正确用法。
+
+**反馈:**
+* **2025-07-06**: **成功**。此修改成功解决了 `ImportError`，使 `pytest` 能够进入测试执行阶段。但暴露了一个新的、在测试设置阶段发生的错误。
+
+**子步骤 3.3: 解决 `moto` 与自定义 endpoint 的冲突**
+
+**问题:**
+`test_async_upload_and_chat` 测试在设置 `mock_s3_environment` fixture 时失败，错误为 `botocore.exceptions.ClientError: An error occurred (XMinioIAMNotInitialized) ...`。
+
+**根本原因分析:**
+这个错误 `XMinioIAMNotInitialized` 表明 `boto3` 客户端仍然在尝试连接到一个真实的 MinIO 服务，而不是使用 `moto` 提供的模拟环境。其根本原因在于：
+1.  `settings` fixture 设置了 `AWS_ENDPOINT_URL` 环境变量。
+2.  `boto3` 客户端会优先使用这个环境变量来决定连接的目标地址。
+3.  因此，即使代码运行在 `with mock_aws():` 的上下文中，`boto3` 仍然绕过了 `moto` 的模拟，直接去连接环境变量中指定的 MinIO 地址，导致了失败。
+
+**解决方案(最小化修改):**
+我们需要阻止 `boto3` 在 `moto` 的模拟环境中使用自定义的 endpoint。最直接的方法是在进入 `mock_aws` 上下文之前，临时移除这个环境变量。
+修改 `tests/test_api.py` 中的 `mock_s3_environment` fixture，在 `with mock_aws():` 语句之前，删除 `AWS_ENDPOINT_URL` 环境变量。
 
 **反馈:**
 * **2025-07-06**: 待执行。
