@@ -28,8 +28,11 @@ def settings(monkeypatch):
     monkeypatch.setenv("AWS_ENDPOINT_URL", "http://localhost:9000")
     monkeypatch.setenv("S3_BUCKET_NAME", "test-bucket")
 
-    # Force Celery to run tasks eagerly (synchronously) in tests
-    celery_app.conf.update(task_always_eager=True)
+    # Force Celery to run tasks eagerly (synchronously) and store results in tests
+    celery_app.conf.update(
+        task_always_eager=True,
+        task_store_eager_result=True,
+    )
     
     # Pydantic settings are cached, clear the cache to force reload
     get_core_config.cache_clear()

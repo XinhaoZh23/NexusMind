@@ -153,7 +153,7 @@ async def upload_file(
 
         # 3. Queue the processing task
         task = process_file.delay(str(db_file.id))
-        
+
         return UploadResponse(
             task_id=task.id,
             message="File upload accepted and is being processed."
