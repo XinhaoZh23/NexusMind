@@ -1,0 +1,69 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:13
+        env:
+          POSTGRES_USER: nexusmind_user
+          POSTGRES_PASSWORD: nexusmind_password
+          POSTGRES_DB: nexusmind_db
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+      redis:
+        image: redis:6.2
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+    - name: Check out code
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Poetry
+      uses: snok/install-poetry@v1
+
+    - name: Install dependencies
+      run: poetry install
+
+    - name: Lint with flake8
+      run: poetry run flake8 .
+
+    - name: Check formatting with black
+      run: poetry run black --check .
+
+    - name: Check imports with isort
+      run: poetry run isort --check-only .
+
+    - name: Run tests with pytest
+      env:
+        POSTGRES_HOST: localhost
+        POSTGRES_PORT: 5432
+        POSTGRES_USER: nexusmind_user
+        POSTGRES_PASSWORD: nexusmind_password
+        POSTGRES_DB: nexusmind_db
+        REDIS_HOST: localhost
+        REDIS_PORT: 6379
+      run: poetry run pytest 

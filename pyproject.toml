@@ -2,9 +2,9 @@
 name = "nexusmind"
 version = "0.1.0"
 description = "NEXUSMIND - A RAG system development project."
-authors = ["Your Name <you@example.com>"]
+authors = ["Xinhao <zhangxinhao_main@163.com>"]
 readme = "README.md"
-packages = [{include = "core"}]
+packages = [{include = "nexusmind", from = "src"}]
 
 [tool.poetry.dependencies]
 python = ">=3.9"
@@ -14,13 +14,21 @@ litellm = "^1.15.0"
 faiss-cpu = "^1.7.4"
 numpy = "^1.26.0"
 loguru = "^0.7.2"
-fastapi = "^0.104.0"
+fastapi = "^0.111.0"
 uvicorn = {extras = ["standard"], version = "^0.24.0"}
-python-multipart = "^0.0.6"
+python-multipart = "^0.0.9"
+celery = {extras = ["redis"], version = "^5.5.3"}
+redis = "^5.0.4"
+sqlmodel = "^0.0.24"
+boto3 = "^1.39.2"
+psycopg2-binary = "^2.9.10"
 
 [tool.poetry.dev-dependencies]
 pytest = "^7.4.3"
-python-dotenv = "^1.0.0"
+flake8 = "^6.1.0"
+black = "^23.11.0"
+isort = "^5.12.0"
+moto = {extras = ["s3"], version = "^5.1.6"}
 
 [build-system]
 requires = ["poetry-core"]
@@ -30,3 +38,21 @@ build-backend = "poetry.core.masonry.api"
 pythonpath = [
   "."
 ]
+norecursedirs = ["postgres_data", "minio_data", "redis_data", ".venv", "storage"]
+
+[tool.black]
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | postgres_data
+  | minio_data
+  | redis_data
+)/
+'''
+
+[tool.isort]
+profile = "black"
+
+[tool.flake8]
+max-line-length = 88
