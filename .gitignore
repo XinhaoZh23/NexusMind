@@ -41,3 +41,6 @@ coverage.xml
 .vscode/
 .idea/
 *.swp
+
+# Development logs
+develop_log/
