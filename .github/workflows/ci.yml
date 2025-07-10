@@ -2,13 +2,48 @@ name: CI Pipeline
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - ci-ready-push
   pull_request:
     branches: [ main ]
 
 jobs:
-  build_and_test:
+  build_and_lint:
     runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Install dependencies
+        run: poetry install
+
+      - name: Lint with flake8
+        run: poetry run flake8 .
+
+      - name: Check formatting with black
+        run: poetry run black --check .
+
+      - name: Check imports with isort
+        run: poetry run isort --check-only .
+
+      - name: Upload workspace artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: workspace
+          path: .
+
+  test:
+    runs-on: ubuntu-latest
+    needs: build_and_lint
     services:
       postgres:
         image: postgres:13
@@ -34,9 +69,12 @@ jobs:
           - 6379:6379
 
     steps:
-    - name: Check out code
-      uses: actions/checkout@v4
-
+    - name: Download workspace artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: workspace
+        path: .
+        
     - name: Set up Python
       uses: actions/setup-python@v5
       with:
@@ -44,18 +82,9 @@ jobs:
 
     - name: Install Poetry
       uses: snok/install-poetry@v1
-
+      
     - name: Install dependencies
       run: poetry install
-
-    - name: Lint with flake8
-      run: poetry run flake8 .
-
-    - name: Check formatting with black
-      run: poetry run black --check .
-
-    - name: Check imports with isort
-      run: poetry run isort --check-only .
 
     - name: Run tests with pytest
       env:
@@ -66,4 +95,17 @@ jobs:
         POSTGRES_DB: nexusmind_db
         REDIS_HOST: localhost
         REDIS_PORT: 6379
-      run: poetry run pytest 
+      run: poetry run pytest
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Download workspace artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: workspace
+          path: .
+      - name: Placeholder for deployment
+        run: echo "Deployment would happen here..." 
