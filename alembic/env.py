@@ -21,7 +21,7 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-from sqlmodel import SQLModel # noqa
+from sqlmodel import SQLModel  # noqa
 
 # add your model's MetaData object here
 # for 'autogenerate' support
@@ -34,7 +34,7 @@ target_metadata = SQLModel.metadata
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-from nexusmind.config import get_core_config # noqa
+from nexusmind.config import get_core_config  # noqa
 
 db_config = get_core_config()
 db_url = db_config.postgres.get_db_url()
