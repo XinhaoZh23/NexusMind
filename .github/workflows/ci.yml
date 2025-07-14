@@ -1,10 +1,9 @@
-name: CI Pipeline
+name: CI/CD Pipeline
 
 on:
   push:
     branches:
       - main
-      - ci-ready-push
   pull_request:
     branches: [ main ]
 
@@ -61,7 +60,6 @@ jobs:
           --health-retries 5
         ports:
           - 6379:6379
-
     steps:
     - name: Check out code
       uses: actions/checkout@v4
