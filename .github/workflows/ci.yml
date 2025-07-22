@@ -84,6 +84,7 @@ jobs:
         POSTGRES_DB: nexusmind_db
         REDIS_HOST: localhost
         REDIS_PORT: 6379
+        REDIS_DB: 0
       run: poetry run pytest
 
   build-and-push:
