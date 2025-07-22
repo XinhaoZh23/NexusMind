@@ -85,6 +85,11 @@ jobs:
         REDIS_HOST: localhost
         REDIS_PORT: 6379
         REDIS_DB: 0
+        MINIO_ROOT_USER: testuser
+        MINIO_ROOT_PASSWORD: testpassword
+        MINIO_ENDPOINT: localhost:9000
+        MINIO_BUCKET: test-bucket
+        OPENAI_API_KEY: sk-testkey
       run: poetry run pytest
 
   build-and-push:
