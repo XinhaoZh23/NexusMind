@@ -24,7 +24,6 @@ from nexusmind.processor.registry import ProcessorRegistry
 from nexusmind.rag.nexus_rag import NexusRAG
 from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
 from nexusmind.tasks import process_file
-from nexusmind.api.api_v1.api import api_router
 
 logger = get_logger(__name__)
 
@@ -35,12 +34,10 @@ app = FastAPI(
     title="NEXUSMIND API",
     description="The NEXUSMIND API provides endpoints for managing and interacting with the NEXUSMIND platform.",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 # Add Prometheus middleware
 app.add_middleware(PrometheusMiddleware)
-app.add_route("/metrics", metrics)
 
 
 @app.on_event("startup")
