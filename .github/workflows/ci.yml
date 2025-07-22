@@ -126,14 +126,6 @@ jobs:
           echo "Pulling latest changes from origin..."
           git pull origin main
 
-      - name: Create .env file
-        env:
-          PROD_ENV_FILE: ${{ secrets.PROD_ENV_FILE }}
-        run: |
-          echo "Creating .env file from GitHub Secrets..."
-          echo "$PROD_ENV_FILE" > /home/xhz/documents/code_project/NEXUSMIND/.env
-          echo ".env file created successfully."
-
       - name: Pull latest image and restart services
         run: |
           set -e
