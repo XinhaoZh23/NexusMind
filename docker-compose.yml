@@ -57,7 +57,7 @@ services:
       - postgres
       - redis
       - minio
-    restart: unless-stopped
+    # restart: unless-stopped
 
 volumes:
   postgres_data: {}
