@@ -10,7 +10,6 @@ from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from starlette_exporter import PrometheusMiddleware, handle_metrics
-from prometheus_client import REGISTRY
 
 from nexusmind.brain.brain import Brain
 from nexusmind.celery_app import app as celery_app
@@ -32,7 +31,10 @@ API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=True)
 
 app = FastAPI(
     title="NEXUSMIND API",
-    description="The NEXUSMIND API provides endpoints for managing and interacting with the NEXUSMIND platform.",
+    description=(
+        "The NEXUSMIND API provides endpoints for managing "
+        "and interacting with the NEXUSMIND platform."
+    ),
     version="1.0.0",
 )
 
