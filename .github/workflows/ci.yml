@@ -90,6 +90,10 @@ jobs:
         MINIO_ENDPOINT: localhost:9000
         MINIO_BUCKET: test-bucket
         OPENAI_API_KEY: sk-testkey
+        S3_BUCKET_NAME: test-bucket
+        STORAGE_BASE_PATH: /tmp/storage
+        CELERY_BROKER_URL: redis://localhost:6379/0
+        CELERY_RESULT_BACKEND: redis://localhost:6379/0
       run: poetry run pytest
 
   build-and-push:
