@@ -5,12 +5,18 @@ from .config import CoreConfig
 # Load application configuration
 config = CoreConfig()
 
+# Construct Redis URL from the structured config
+redis_url = (
+    f"redis://{config.redis.redis_host}:{config.redis.redis_port}/"
+    f"{config.redis.redis_db}"
+)
+
 # Initialize Celery
 app = Celery(
     "nexusmind_tasks",
-    broker=config.redis_url,
-    backend=config.redis_url,
-    include=["core.nexusmind.tasks"],  # Points to the future tasks file
+    broker=redis_url,
+    backend=redis_url,
+    include=["nexusmind.tasks"],
 )
 
 # Optional: Update Celery configuration with more settings if needed
