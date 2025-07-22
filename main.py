@@ -9,7 +9,8 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, Uploa
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from starlette_exporter import PrometheusMiddleware, metrics
+from starlette_exporter import PrometheusMiddleware
+from prometheus_client import REGISTRY
 
 from nexusmind.brain.brain import Brain
 from nexusmind.celery_app import app as celery_app
