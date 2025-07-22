@@ -9,7 +9,6 @@ class BaseConfig(BaseSettings):
     """
 
     model_config = SettingsConfigDict(
-        env_file=".env",
         env_file_encoding="utf-8",
         env_nested_delimiter="__",
         extra="ignore",
@@ -22,11 +21,11 @@ class PostgresConfig(BaseConfig):
     """PostgreSQL configuration."""
 
     model_config = SettingsConfigDict(env_prefix="POSTGRES_")
-    user: str = "nexusmind_user"
-    password: SecretStr = "nexusmind_password"
-    host: str = "postgres"
-    port: int = 5432
-    db: str = "nexusmind_db"
+    user: str
+    password: SecretStr
+    host: str
+    port: int
+    db: str
 
     def get_db_url(self) -> str:
         return (
@@ -38,16 +37,16 @@ class PostgresConfig(BaseConfig):
 class RedisConfig(BaseConfig):
     """Redis configuration."""
 
-    redis_host: str = "redis"
-    redis_port: int = 6379
-    redis_db: int = 0
+    redis_host: str
+    redis_port: int
+    redis_db: int
 
 
 class MinioConfig(BaseConfig):
     """Minio/S3 configuration."""
 
     model_config = SettingsConfigDict(env_prefix="MINIO_")
-    access_key: str = Field("minioadmin", alias="MINIO_ROOT_USER")
-    secret_key: SecretStr = Field("minioadmin", alias="MINIO_ROOT_PASSWORD")
-    endpoint: str = "http://minio:9000"
-    bucket: str = "nexusmind"
+    access_key: str = Field(alias="MINIO_ROOT_USER")
+    secret_key: SecretStr = Field(alias="MINIO_ROOT_PASSWORD")
+    endpoint: str
+    bucket: str

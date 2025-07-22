@@ -24,25 +24,24 @@ class CoreConfig(BaseConfig):
     max_tokens: int = Field(1000, description="LLM max tokens.")
 
     # The API key for OpenAI services, loaded from OPENAI_API_KEY.
-    openai_api_key: str = "sk-proj-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    openai_api_key: str
 
     # --- S3 Configuration ---
-    s3_bucket_name: str = "nexusmind-document-storage"
+    s3_bucket_name: str
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     aws_region: str = "us-east-1"
     aws_endpoint_url: str | None = None
 
     # --- Redis Configuration ---
-    redis_url: str = "redis://localhost:6379/0"
 
     # --- Storage Configuration ---
     # The base path for local file storage.
-    storage_base_path: str = "storage"
+    storage_base_path: str
 
     # Celery settings
-    celery_broker_url: str = "redis://localhost:6379/0"
-    celery_result_backend: str = "redis://localhost:6379/0"
+    celery_broker_url: str
+    celery_result_backend: str
     task_track_started: bool = True
 
     api_keys: list[str] = []
