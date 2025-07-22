@@ -9,7 +9,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, Uploa
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from starlette_exporter import PrometheusMiddleware
+from starlette_exporter import PrometheusMiddleware, handle_metrics
 from prometheus_client import REGISTRY
 
 from nexusmind.brain.brain import Brain
@@ -38,6 +38,7 @@ app = FastAPI(
 
 # Add Prometheus middleware
 app.add_middleware(PrometheusMiddleware)
+app.add_route("/metrics", handle_metrics)
 
 
 @app.on_event("startup")
