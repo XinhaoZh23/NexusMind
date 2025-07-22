@@ -1,0 +1,30 @@
+# Git history
+.git
+.gitignore
+
+# Docker specific
+.dockerignore
+Dockerfile
+
+# IDE and editor configurations
+.vscode/
+.idea/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local environment variables
+# Secrets should be passed at runtime, not built into the image.
+.env
+*.env.*
+
+# Persistent data volumes.
+# These are mounted at runtime and should not be part of the image.
+postgres_data/
+minio_data/
+redis_data/
+
+# Documentation and development artifacts
+docs/
+develop_log/ 

@@ -35,6 +35,12 @@ app = FastAPI(
 )
 
 
+@app.get("/health")
+async def health_check():
+    """Simple health check endpoint."""
+    return {"status": "ok"}
+
+
 @app.on_event("startup")
 def on_startup():
     # Create database tables if they don't exist

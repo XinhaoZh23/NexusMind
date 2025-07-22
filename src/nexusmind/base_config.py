@@ -24,7 +24,7 @@ class PostgresConfig(BaseConfig):
     model_config = SettingsConfigDict(env_prefix="POSTGRES_")
     user: str = "nexusmind_user"
     password: SecretStr = "nexusmind_password"
-    host: str = "localhost"
+    host: str = "postgres"
     port: int = 5432
     db: str = "nexusmind_db"
 
@@ -38,7 +38,7 @@ class PostgresConfig(BaseConfig):
 class RedisConfig(BaseConfig):
     """Redis configuration."""
 
-    redis_host: str = "localhost"
+    redis_host: str = "redis"
     redis_port: int = 6379
     redis_db: int = 0
 
@@ -49,5 +49,5 @@ class MinioConfig(BaseConfig):
     model_config = SettingsConfigDict(env_prefix="MINIO_")
     access_key: str = Field("minioadmin", alias="MINIO_ROOT_USER")
     secret_key: SecretStr = Field("minioadmin", alias="MINIO_ROOT_PASSWORD")
-    endpoint: str = "http://localhost:9000"
+    endpoint: str = "http://minio:9000"
     bucket: str = "nexusmind"
