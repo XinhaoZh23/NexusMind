@@ -147,6 +147,7 @@ jobs:
       - name: Deploy with Environment Variables
         run: |
           set -e
+          set -x
           echo "Navigating to project directory..."
           cd /home/xhz/documents/code_project/NEXUSMIND
 
