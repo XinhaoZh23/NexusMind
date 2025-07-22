@@ -9,6 +9,7 @@ from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, Uploa
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from starlette_exporter import PrometheusMiddleware, metrics
 
 from nexusmind.brain.brain import Brain
 from nexusmind.celery_app import app as celery_app
@@ -22,6 +23,7 @@ from nexusmind.processor.registry import ProcessorRegistry
 from nexusmind.rag.nexus_rag import NexusRAG
 from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
 from nexusmind.tasks import process_file
+from nexusmind.api.api_v1.api import api_router
 
 logger = get_logger(__name__)
 
@@ -30,15 +32,14 @@ API_KEY_HEADER = APIKeyHeader(name="X-API-Key", auto_error=True)
 
 app = FastAPI(
     title="NEXUSMIND API",
-    description="An API for interacting with the NEXUSMIND RAG system.",
-    version="0.1.0",
+    description="The NEXUSMIND API provides endpoints for managing and interacting with the NEXUSMIND platform.",
+    version="1.0.0",
+    lifespan=lifespan,
 )
 
-
-@app.get("/health")
-async def health_check():
-    """Simple health check endpoint."""
-    return {"status": "ok"}
+# Add Prometheus middleware
+app.add_middleware(PrometheusMiddleware)
+app.add_route("/metrics", metrics)
 
 
 @app.on_event("startup")
