@@ -231,5 +231,14 @@ async def chat_with_brain(request: ChatRequest):
     return {"answer": answer}
 
 
+@app.get("/health", tags=["Health"])
+async def health_check():
+    """
+    Simple health check endpoint.
+    Returns a 200 OK status if the application is running.
+    """
+    return {"status": "ok"}
+
+
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
