@@ -125,43 +125,7 @@ jobs:
     runs-on: kpl-server-deploy
     needs: build-and-push
     if: github.ref == 'refs/heads/main'
-    env:
-      POSTGRES_USER: ${{ secrets.PROD_POSTGRES_USER }}
-      POSTGRES_PASSWORD: ${{ secrets.PROD_POSTGRES_PASSWORD }}
-      POSTGRES_DB: ${{ secrets.PROD_POSTGRES_DB }}
-      POSTGRES_HOST: ${{ secrets.PROD_POSTGRES_HOST }}
-      POSTGRES_PORT: ${{ secrets.PROD_POSTGRES_PORT }}
-      REDIS_HOST: ${{ secrets.PROD_REDIS_HOST }}
-      REDIS_PORT: ${{ secrets.PROD_REDIS_PORT }}
-      REDIS_DB: ${{ secrets.PROD_REDIS_DB }}
-      MINIO_ROOT_USER: ${{ secrets.PROD_MINIO_ROOT_USER }}
-      MINIO_ROOT_PASSWORD: ${{ secrets.PROD_MINIO_ROOT_PASSWORD }}
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      S3_BUCKET_NAME: ${{ secrets.S3_BUCKET_NAME }}
-      STORAGE_BASE_PATH: ${{ secrets.STORAGE_BASE_PATH }}
-      CELERY_BROKER_URL: ${{ secrets.CELERY_BROKER_URL }}
-      CELERY_RESULT_BACKEND: ${{ secrets.CELERY_RESULT_BACKEND }}
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
     steps:
-      - name: Deploy with Environment Variables
-        shell: bash --noprofile --norc -eo pipefail {0}
+      - name: Ultimate Sanity Check
         run: |
-          set -x
-          echo "Navigating to project directory..."
-          cd /home/xhz/documents/code_project/NEXUSMIND
-
-          echo "Pulling latest changes from origin..."
-          git pull origin main
-
-          echo "Logging in to Docker Hub..."
-          echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
-          
-          echo "Pulling latest Docker image..."
-          docker-compose pull nexusmind-api
-
-          echo "Restarting services with Docker Compose..."
-          docker-compose up -d -T --force-recreate --remove-orphans
-
-          echo "Cleaning up unused Docker images..."
-          docker image prune -a -f
+          echo "This is the ultimate sanity check. If you see this, the runner's core functionality is OK."
