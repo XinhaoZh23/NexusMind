@@ -20,4 +20,4 @@ def create_and_get_brain_id():
 
 
 if __name__ == "__main__":
-    create_and_get_brain_id() 
+    create_and_get_brain_id()
