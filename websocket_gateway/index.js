@@ -1,62 +1,74 @@
 const express = require('express');
 const http = require('http');
-const { WebSocketServer } = require('ws');
+const { Server } = require('socket.io');
 const axios = require('axios');
 
 const app = express();
 const server = http.createServer(app);
 
-// Use a different port for the WebSocket gateway
-const PORT = process.env.PORT || 8080;
-const FASTAPI_URL = 'http://localhost:8000/chat'; // Corrected path based on main.py
+// Initialize Socket.IO server with CORS configuration
+const io = new Server(server, {
+  cors: {
+    origin: "*", // Allow all origins for debugging purposes
+    methods: ["GET", "POST"]
+  }
+});
 
-const wss = new WebSocketServer({ server });
+const FASTAPI_URL = 'http://localhost:8000/chat';
+const API_KEY = 'nexusmind-power-user-key'; // Replace with your actual API key
 
-wss.on('connection', (ws) => {
-  console.log('Client connected');
+// Listen for new connections
+io.on('connection', (socket) => {
+  console.log(`✅ Client connected: ${socket.id}`);
 
-  ws.on('message', async (message) => {
+  // Listen for 'message' events from this client
+  socket.on('message', async (data) => {
+    console.log(`[Socket ${socket.id}] Received message:`, data);
+
     try {
-      const parsedMessage = JSON.parse(message);
-      console.log('Received message, forwarding to FastAPI:', parsedMessage);
+      const requestPayload = {
+        question: data.payload.question,
+        // For now, we hardcode the brain_id as we did in the file upload
+        brain_id: '00000000-0000-0000-0000-000000000001', 
+      };
 
-      const response = await axios.post(
-        FASTAPI_URL,
-        parsedMessage,
-        {
-          headers: {
-            'X-API-Key': 'your-super-secret-key'
-          }
-        }
-      );
+      console.log(`[Socket ${socket.id}] Forwarding to FastAPI:`, requestPayload);
 
-      // Since the response is now a single JSON object, not a stream,
-      // we send it directly.
-      ws.send(JSON.stringify(response.data));
+      const response = await axios.post(FASTAPI_URL, requestPayload, {
+        headers: {
+          'X-API-Key': API_KEY,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      console.log(`[Socket ${socket.id}] Received from FastAPI:`, response.data);
+
+      // Send the response back to the original client
+      socket.emit('message', response.data);
 
     } catch (error) {
-      console.error('Error forwarding message to FastAPI:', error.message);
-      // It's good practice to check for error.response to provide more specific details
-      if (error.response) {
-        ws.send(JSON.stringify({ 
-          error: `Backend error: ${error.response.status}`,
-          details: error.response.data 
-        }));
-      } else {
-        ws.send(JSON.stringify({ error: 'The backend service is currently unavailable.' }));
-      }
+      const errorMessage = error.response ? error.response.data : error.message;
+      console.error(`[Socket ${socket.id}] Error forwarding to FastAPI:`, errorMessage);
+      
+      socket.emit('message', { 
+        error: 'Failed to get response from backend.',
+        details: errorMessage 
+      });
     }
   });
 
-  ws.on('close', () => {
-    console.log('Client disconnected');
+  // Listen for client disconnection
+  socket.on('disconnect', (reason) => {
+    console.log(`❌ Client disconnected: ${socket.id}. Reason: ${reason}`);
   });
 
-  ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
+  // Listen for any connection errors
+  socket.on('connect_error', (err) => {
+    console.error(`Connection error for socket ${socket.id}: ${err.message}`);
   });
 });
 
+const PORT = 8080;
 server.listen(PORT, () => {
-  console.log(`Gateway server listening on port ${PORT}`);
+  console.log(`Gateway server with Socket.IO is listening on port ${PORT}`);
 }); 

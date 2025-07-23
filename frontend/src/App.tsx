@@ -1,8 +1,11 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import axios from 'axios';
 import Layout from './components/Layout';
 import ChatHistory from './components/ChatHistory';
 import MessageInput from './components/MessageInput';
 import { useWebSocket } from './hooks/useWebSocket';
+import { FileUpload } from './components/FileUpload';
+import type { UploadedFile } from './components/FileUpload';
 
 // Define a type for the message object for better type safety
 export interface Message {
@@ -18,10 +21,14 @@ const initialMessages: Message[] = [
   { id: 3, sender: 'user', text: 'My order number is #12345.' },
 ];
 
+interface ProcessingFile extends UploadedFile {
+  status: string;
+}
 
 function App() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
+  const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
 
   const addMessage = useCallback((newMessage: Omit<Message, 'id'>) => {
     setMessages((prevMessages) => [
@@ -31,6 +38,43 @@ function App() {
   }, []);
 
   const { isConnected, sendMessage } = useWebSocket(addMessage);
+
+  const handleFileUpload = (file: UploadedFile) => {
+    setProcessingFiles((prevFiles) => [
+      ...prevFiles,
+      { ...file, status: 'PENDING' },
+    ]);
+  };
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      processingFiles.forEach(async (file) => {
+        if (file.status === 'PENDING' || file.status === 'STARTED') {
+          try {
+            const response = await axios.get(`/upload-api/upload/status/${file.task_id}`);
+            if (response.data.status === 'SUCCESS') {
+              setProcessingFiles((prevFiles) =>
+                prevFiles.map((f) =>
+                  f.task_id === file.task_id ? { ...f, status: 'SUCCESS' } : f
+                )
+              );
+              // Notify user in chat
+              addMessage({
+                sender: 'bot',
+                text: `✅ File "${file.file_name}" has been processed and is ready.`,
+              });
+            } else if (response.data.status === 'FAILURE') {
+                // Handle failure case
+            }
+          } catch (error) {
+            console.error(`Failed to get status for task ${file.task_id}`, error);
+          }
+        }
+      });
+    }, 5000); // Poll every 5 seconds
+
+    return () => clearInterval(interval);
+  }, [processingFiles, addMessage]);
 
   const handleSendMessage = () => {
     if (inputValue.trim() === '') return;
@@ -47,7 +91,7 @@ function App() {
   };
 
   return (
-    <Layout>
+    <Layout onFileUpload={handleFileUpload}>
       <ChatHistory messages={messages} />
       <MessageInput
         inputValue={inputValue}

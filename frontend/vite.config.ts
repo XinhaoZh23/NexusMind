@@ -7,11 +7,9 @@ export default defineConfig({
   server: {
     proxy: {
       // Proxy for WebSocket Gateway
-      '/api': {
+      '/socket.io': {
         target: 'http://localhost:8080',
-        changeOrigin: true,
         ws: true, // Enable WebSocket proxying
-        rewrite: (path) => path.replace(/^\/api/, ''),
       },
       // Proxy for FastAPI Upload Endpoint
       '/upload-api': {
