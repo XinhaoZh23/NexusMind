@@ -67,6 +67,7 @@ services:
       - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
       - S3_BUCKET_NAME=${S3_BUCKET_NAME}
       - STORAGE_BASE_PATH=${STORAGE_BASE_PATH}
+      - API_KEYS=${API_KEYS}
     command: poetry run uvicorn main:app --host 0.0.0.0 --port 8000
     depends_on:
       - postgres
