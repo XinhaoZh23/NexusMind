@@ -161,7 +161,7 @@ jobs:
           docker compose pull nexusmind-api
 
           echo "Restarting services with Docker Compose..."
-          docker compose up -d -T --force-recreate --remove-orphans
+          docker compose up -d --force-recreate --remove-orphans
 
           echo "Cleaning up unused Docker images..."
           docker image prune -a -f
