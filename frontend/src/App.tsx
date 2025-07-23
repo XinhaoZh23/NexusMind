@@ -1,8 +1,13 @@
+import Layout from './components/Layout';
+import ChatHistory from './components/ChatHistory';
+import MessageInput from './components/MessageInput';
+
 function App() {
   return (
-    <div>
-      Hello World
-    </div>
+    <Layout>
+      <ChatHistory />
+      <MessageInput />
+    </Layout>
   );
 }
 
