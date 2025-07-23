@@ -1,5 +1,5 @@
 from nexusmind.brain.brain import Brain
-import uuid
+
 
 def create_and_get_brain_id():
     """
@@ -17,6 +17,7 @@ def create_and_get_brain_id():
     test_brain.save()
     print(f"Brain created and saved. ID: {test_brain.brain_id}")
     return test_brain.brain_id
+
 
 if __name__ == "__main__":
     create_and_get_brain_id() 
