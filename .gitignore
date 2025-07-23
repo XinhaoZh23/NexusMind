@@ -3,7 +3,7 @@ docs/
 
 # Environment variables
 .env
-.env.*
+*.env.local
 
 # Poetry virtualenv
 .venv/

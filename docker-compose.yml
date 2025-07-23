@@ -48,26 +48,14 @@ services:
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
+    env_file:
+      - ./.env
     environment:
+      # These values are specific to the docker environment and override .env
       - PYTHONPATH=/app/src
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
       - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=${POSTGRES_PORT}
-      - POSTGRES_DB=${POSTGRES_DB}
-      - REDIS_HOST=${REDIS_HOST}
-      - REDIS_PORT=${REDIS_PORT}
-      - REDIS_DB=${REDIS_DB}
-      - MINIO_ROOT_USER=${MINIO_ROOT_USER}
-      - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+      - REDIS_HOST=redis
       - MINIO_ENDPOINT=http://minio:9000
-      - MINIO_BUCKET=${MINIO_BUCKET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
-      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
-      - S3_BUCKET_NAME=${S3_BUCKET_NAME}
-      - STORAGE_BASE_PATH=${STORAGE_BASE_PATH}
-      - API_KEYS=${API_KEYS}
     command: poetry run uvicorn main:app --host 0.0.0.0 --port 8000
     depends_on:
       - postgres
