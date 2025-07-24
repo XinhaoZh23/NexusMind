@@ -33,15 +33,16 @@ export interface BrainFile {
 }
 
 
-// This is the initial dummy data, which will be managed by state now
-const initialMessages: Message[] = [
-  { id: 1, sender: 'user', text: 'Hello, I have a question about my recent order.' },
-  { id: 2, sender: 'bot', text: 'Of course! I can help with that. What is your order number?' },
-  { id: 3, sender: 'user', text: 'My order number is #12345.' },
-];
+// No longer needed, we will start with empty message histories
+// const initialMessages: Message[] = [
+//   { id: 1, sender: 'user', text: 'Hello, I have a question about my recent order.' },
+//   { id: 2, sender: 'bot', text: 'Of course! I can help with that. What is your order number?' },
+//   { id: 3, sender: 'user', text: 'My order number is #12345.' },
+// ];
 
 function App() {
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  // This state now holds the message history for ALL brains
+  const [allMessages, setAllMessages] = useState<{ [key: string]: Message[] }>({});
   const [inputValue, setInputValue] = useState('');
   const [brains, setBrains] = useState<Brain[]>([]);
   const [currentBrainId, setCurrentBrainId] = useState<string | null>(null);
@@ -49,12 +50,24 @@ function App() {
   const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
   const [brainToRename, setBrainToRename] = useState<Brain | null>(null);
 
+  // Derived state for the currently selected brain's messages
+  const messages = currentBrainId ? allMessages[currentBrainId] || [] : [];
+
   const addMessage = useCallback((newMessage: Omit<Message, 'id'>) => {
-    setMessages((prevMessages) => [
-      ...prevMessages,
-      { id: prevMessages.length + 1, ...newMessage },
-    ]);
-  }, []);
+    if (!currentBrainId) return;
+
+    setAllMessages(prevAllMessages => {
+      const currentHistory = prevAllMessages[currentBrainId] || [];
+      const newHistory = [
+        ...currentHistory,
+        { id: currentHistory.length + 1, ...newMessage },
+      ];
+      return {
+        ...prevAllMessages,
+        [currentBrainId]: newHistory,
+      };
+    });
+  }, [currentBrainId]);
 
   const fetchBrains = async () => {
     try {
@@ -164,15 +177,16 @@ function App() {
   const { isConnected, sendMessage } = useWebSocket(addMessage);
 
   const handleSendMessage = () => {
-    if (inputValue.trim() === '') return;
+    if (inputValue.trim() === '' || !currentBrainId) return;
 
-    const userMessage: Message = {
-      id: messages.length + 1,
+    const userMessage: Omit<Message, 'id'> = {
       sender: 'user',
       text: inputValue,
     };
+    
+    // Add the user's message to the current brain's history
+    addMessage(userMessage);
 
-    setMessages([...messages, userMessage]);
     sendMessage(inputValue, currentBrainId); // Send message through WebSocket with brain_id
     setInputValue('');
   };
