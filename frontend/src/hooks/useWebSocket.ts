@@ -47,8 +47,12 @@ export const useWebSocket = (addMessage: (message: Omit<Message, 'id'>) => void)
 
     // Cleanup on component unmount
     return () => {
-      console.log('Disconnecting WebSocket.');
-      socket.disconnect();
+      // We should remove the event listeners to avoid memory leaks
+      // and duplicate event handlers on re-renders.
+      // We should NOT disconnect the socket itself, as the instance is shared.
+      socket.off('connect');
+      socket.off('disconnect');
+      socket.off('message');
     };
   }, [addMessage]);
 
