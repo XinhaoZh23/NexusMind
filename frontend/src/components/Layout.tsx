@@ -1,54 +1,80 @@
 import React from 'react';
 import {
-  AppBar, Box, CssBaseline, Drawer, Toolbar, Typography
+  Box,
+  Drawer,
+  Toolbar,
+  Typography,
+  Divider,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
+  Button,
 } from '@mui/material';
+import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import PsychologyIcon from '@mui/icons-material/Psychology';
 import { FileUpload } from './FileUpload';
-import type { UploadedFile } from './FileUpload';
 
 const drawerWidth = 240;
 
+// Dummy data for presentation purposes
+const dummyBrains = [
+  { id: '1', name: 'Default Brain' },
+  { id: '2', name: 'Project Alpha' },
+  { id: '3', name: 'Personal Notes' },
+];
+
 interface LayoutProps {
-  children: React.ReactNode;
-  onFileUpload: (file: UploadedFile) => void;
+  onFileUploaded: (fileName: string) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, onFileUpload }) => {
+const Layout: React.FC<LayoutProps> = ({ onFileUploaded }) => {
   return (
-    <Box sx={{ display: 'flex' }}>
-      <CssBaseline />
-      <AppBar
-        position="fixed"
-        sx={{ width: `calc(100% - ${drawerWidth}px)`, ml: `${drawerWidth}px` }}
-      >
-        <Toolbar>
-          <Typography variant="h6" noWrap component="div">
-            NEXUSMIND
-          </Typography>
-        </Toolbar>
-      </AppBar>
-      <Drawer
-        sx={{
+    <Drawer
+      variant="permanent"
+      sx={{
+        width: drawerWidth,
+        flexShrink: 0,
+        [`& .MuiDrawer-paper`]: {
           width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-          },
-        }}
-        variant="permanent"
-        anchor="left"
-      >
-        <Toolbar />
-        <FileUpload onFileUpload={onFileUpload} />
-      </Drawer>
-      <Box
-        component="main"
-        sx={{ flexGrow: 1, bgcolor: 'background.default', p: 3 }}
-      >
-        <Toolbar />
-        {children}
+          boxSizing: 'border-box',
+        },
+      }}
+    >
+      <Toolbar />
+      <Box sx={{ p: 2, pb: 1 }}>
+        <Typography variant="h6" component="div">
+          Brains
+        </Typography>
       </Box>
-    </Box>
+      <List>
+        {dummyBrains.map((brain, index) => (
+          <ListItem key={brain.id} disablePadding>
+            <ListItemButton selected={index === 0}>
+              <ListItemIcon>
+                <PsychologyIcon />
+              </ListItemIcon>
+              <ListItemText primary={brain.name} />
+            </ListItemButton>
+          </ListItem>
+        ))}
+      </List>
+      <Box sx={{ p: 2 }}>
+        <Button
+          variant="outlined"
+          startIcon={<AddCircleOutlineIcon />}
+          fullWidth
+          onClick={() => alert('New Brain clicked!')}
+        >
+          New Brain
+        </Button>
+      </Box>
+      <Divider sx={{ mt: 'auto' }} />
+      <Box sx={{ p: 2 }}>
+        <FileUpload onFileUploaded={onFileUploaded} />
+      </Box>
+    </Drawer>
   );
 };
 

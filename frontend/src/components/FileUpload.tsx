@@ -2,24 +2,28 @@ import React, { useRef, useState } from 'react';
 import axios from 'axios';
 import { Box, Button, LinearProgress, Typography } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
+import { styled } from '@mui/material/styles';
 
 export interface UploadedFile {
-  task_id: string;
-  file_name: string;
+  filename: string;
 }
 
 interface FileUploadProps {
-  onFileUpload: (file: UploadedFile) => void;
+  onFileUploaded: (fileName: string) => void;
 }
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
+const VisuallyHiddenInput = styled('input')({
+  display: 'none',
+});
+
+export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadStatus, setUploadStatus] = useState('');
+  const [uploadStatus, setUploadStatus] = useState<{ status: string; message: string } | null>(null);
 
   const handleUploadClick = () => {
-    setUploadStatus('');
+    setUploadStatus(null);
     setUploadProgress(null);
     fileInputRef.current?.click();
   };
@@ -35,7 +39,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
     formData.append('brain_id', '00000000-0000-0000-0000-000000000001');
 
     setIsUploading(true);
-    setUploadStatus(`Uploading ${file.name}...`);
+    setUploadStatus({ status: 'uploading', message: `Uploading ${file.name}...` });
 
     try {
       const response = await axios.post('/upload-api/upload', formData, {
@@ -50,17 +54,15 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
           setUploadProgress(percentCompleted);
         },
       });
-      setUploadStatus(`✅ ${response.data.message}`);
-      
-      // Pass the task info up to the parent component
-      onFileUpload({
-        task_id: response.data.task_id,
-        file_name: file.name,
+      setUploadStatus({
+        status: 'success',
+        message: `File '${response.data.message}' uploaded successfully.`,
       });
-
+      onFileUploaded(response.data.message); // Use the correct prop
+      // pollFileStatus(response.data.message); // This line was removed as per the edit hint
     } catch (error) {
-      console.error('File upload failed:', error);
-      setUploadStatus('❌ Upload failed.');
+      console.error('Error uploading file:', error);
+      setUploadStatus({ status: 'error', message: '❌ Upload failed.' });
     } finally {
       setIsUploading(false);
     }
@@ -78,7 +80,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
       >
         Upload File
       </Button>
-      <input
+      <VisuallyHiddenInput
         type="file"
         hidden
         ref={fileInputRef}
@@ -92,7 +94,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload }) => {
       )}
       {uploadStatus && (
         <Typography variant="caption" display="block" sx={{ mt: 1 }}>
-          {uploadStatus}
+          {uploadStatus.message}
         </Typography>
       )}
     </Box>

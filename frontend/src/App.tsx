@@ -6,6 +6,11 @@ import MessageInput from './components/MessageInput';
 import { useWebSocket } from './hooks/useWebSocket';
 import { FileUpload } from './components/FileUpload';
 import type { UploadedFile } from './components/FileUpload';
+import FileExplorer from './components/FileExplorer';
+import { AppBar, Box, CssBaseline, Toolbar, Typography } from '@mui/material';
+
+const leftDrawerWidth = 240;
+const rightDrawerWidth = 240;
 
 // Define a type for the message object for better type safety
 export interface Message {
@@ -21,14 +26,9 @@ const initialMessages: Message[] = [
   { id: 3, sender: 'user', text: 'My order number is #12345.' },
 ];
 
-interface ProcessingFile extends UploadedFile {
-  status: string;
-}
-
 function App() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
-  const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
 
   const addMessage = useCallback((newMessage: Omit<Message, 'id'>) => {
     setMessages((prevMessages) => [
@@ -38,43 +38,6 @@ function App() {
   }, []);
 
   const { isConnected, sendMessage } = useWebSocket(addMessage);
-
-  const handleFileUpload = (file: UploadedFile) => {
-    setProcessingFiles((prevFiles) => [
-      ...prevFiles,
-      { ...file, status: 'PENDING' },
-    ]);
-  };
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      processingFiles.forEach(async (file) => {
-        if (file.status === 'PENDING' || file.status === 'STARTED') {
-          try {
-            const response = await axios.get(`/upload-api/upload/status/${file.task_id}`);
-            if (response.data.status === 'SUCCESS') {
-              setProcessingFiles((prevFiles) =>
-                prevFiles.map((f) =>
-                  f.task_id === file.task_id ? { ...f, status: 'SUCCESS' } : f
-                )
-              );
-              // Notify user in chat
-              addMessage({
-                sender: 'bot',
-                text: `✅ File "${file.file_name}" has been processed and is ready.`,
-              });
-            } else if (response.data.status === 'FAILURE') {
-                // Handle failure case
-            }
-          } catch (error) {
-            console.error(`Failed to get status for task ${file.task_id}`, error);
-          }
-        }
-      });
-    }, 5000); // Poll every 5 seconds
-
-    return () => clearInterval(interval);
-  }, [processingFiles, addMessage]);
 
   const handleSendMessage = () => {
     if (inputValue.trim() === '') return;
@@ -90,16 +53,56 @@ function App() {
     setInputValue('');
   };
 
+  const handleFileUploaded = (fileName: string) => {
+    addMessage({
+      sender: 'bot',
+      text: `✅ File "${fileName}" has been uploaded and is being processed.`,
+    });
+  };
+
   return (
-    <Layout onFileUpload={handleFileUpload}>
-      <ChatHistory messages={messages} />
-      <MessageInput
-        inputValue={inputValue}
-        setInputValue={setInputValue}
-        onSendMessage={handleSendMessage}
-        isConnected={isConnected}
-      />
-    </Layout>
+    <Box sx={{ display: 'flex', height: '100vh' }}>
+      <CssBaseline />
+      <AppBar
+        position="fixed"
+        sx={{
+          width: `calc(100% - ${leftDrawerWidth}px)`,
+          ml: `${leftDrawerWidth}px`,
+          zIndex: (theme) => theme.zIndex.drawer + 1
+        }}
+      >
+        <Toolbar>
+          <Typography variant="h6" noWrap component="div">
+            NEXUSMIND
+          </Typography>
+        </Toolbar>
+      </AppBar>
+      <Layout onFileUploaded={handleFileUploaded} />
+      {/* Main Content */}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          p: 3,
+          display: 'flex',
+          flexDirection: 'column',
+          height: '100vh',
+          // Account for both drawers
+          width: `calc(100% - ${leftDrawerWidth + rightDrawerWidth}px)`,
+          // No longer need margin left, as the AppBar and Drawers are positioned correctly
+        }}
+      >
+        <Toolbar /> {/* Spacer for the AppBar */}
+        <ChatHistory messages={messages} />
+        <MessageInput
+          inputValue={inputValue}
+          setInputValue={setInputValue}
+          onSendMessage={handleSendMessage}
+          isConnected={isConnected}
+        />
+      </Box>
+      <FileExplorer />
+    </Box>
   );
 }
 
