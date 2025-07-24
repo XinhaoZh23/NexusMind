@@ -4,8 +4,6 @@ import Layout from './components/Layout';
 import ChatHistory from './components/ChatHistory';
 import MessageInput from './components/MessageInput';
 import { useWebSocket } from './hooks/useWebSocket';
-import { FileUpload } from './components/FileUpload';
-import type { UploadedFile } from './components/FileUpload';
 import FileExplorer from './components/FileExplorer';
 import RenameBrainDialog from './components/RenameBrainDialog'; // Import the new component
 import { AppBar, Box, CssBaseline, Toolbar, Typography } from '@mui/material';

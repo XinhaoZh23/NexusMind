@@ -49,7 +49,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, currentB
     setUploadStatus({ status: 'uploading', message: `Uploading ${file.name}...` });
 
     try {
-      const response = await axios.post('/api/upload', formData, {
+      await axios.post('/api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
           'X-API-Key': 'your-super-secret-key', // Use the correct API key

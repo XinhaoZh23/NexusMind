@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { Message } from '../App'; // Correctly import as a type
 
-// The URL of our WebSocket gateway
-const SOCKET_URL = 'http://localhost:8080';
+// The URL of our WebSocket gateway is no longer needed here
+// as the connection is established with a relative path.
 
 // Create the socket instance outside the component to prevent re-creation on re-renders.
 // This is a common pattern to avoid issues with React's strict mode and HMR.
