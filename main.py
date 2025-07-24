@@ -217,12 +217,10 @@ async def create_new_brain():
         raise HTTPException(status_code=500, detail="Failed to create new brain.")
 
 
-@app.put("/brains/{brain_id}", dependencies=[Depends(get_api_key)],
-         response_model=BrainInfo)
-async def update_brain_name(
-    brain_id: uuid.UUID,
-    request: UpdateBrainRequest
-):
+@app.put(
+    "/brains/{brain_id}", dependencies=[Depends(get_api_key)], response_model=BrainInfo
+)
+async def update_brain_name(brain_id: uuid.UUID, request: UpdateBrainRequest):
     """
     Updates the name of a specific brain.
     """
@@ -241,10 +239,11 @@ async def update_brain_name(
         raise HTTPException(status_code=500, detail="Failed to update brain.")
 
 
-@app.get("/brains/{brain_id}/files",
-         dependencies=[Depends(get_api_key)],
-         response_model=FilesList,
-         )
+@app.get(
+    "/brains/{brain_id}/files",
+    dependencies=[Depends(get_api_key)],
+    response_model=FilesList,
+)
 async def get_brain_files(brain_id: uuid.UUID, session: Session = Depends(get_session)):
     """
     Retrieves all files associated with a specific brain.
