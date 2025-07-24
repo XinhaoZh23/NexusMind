@@ -160,10 +160,34 @@ function App() {
       sender: 'bot',
       text: `✅ File "${fileName}" has been uploaded and is being processed.`,
     });
-    // After a file is uploaded, refresh the file list for the current brain.
-    if (currentBrainId) {
-      fetchFilesForBrain(currentBrainId);
-    }
+
+    // Start polling for the new file to appear in the list.
+    const poll = setInterval(() => {
+      if (currentBrainId) {
+        // We fetch the files and check if the new file is present.
+        // We don't update the state here directly to avoid UI flicker.
+        axios.get<{ files: BrainFile[] }>(`/api/brains/${currentBrainId}/files`, {
+          headers: { 'X-API-Key': 'your-super-secret-key' },
+        }).then(response => {
+          console.log(`[App.tsx] Polling... Trying to find filename: "${fileName}" in received files:`, response.data.files);
+          const foundFile = response.data.files.find(file => file.file_name === fileName);
+          if (foundFile) {
+            // If the file is found, we stop polling and update the state.
+            console.log(`[App.tsx] File found: ${fileName}. Stopping poll. Updating files state with:`, response.data.files);
+            clearInterval(poll);
+            setFiles(response.data.files);
+          }
+        }).catch(error => {
+          console.error('Polling for files failed:', error);
+          clearInterval(poll); // Stop polling on error
+        });
+      }
+    }, 2000); // Poll every 2 seconds
+
+    // Stop polling after a timeout (e.g., 30 seconds) to prevent infinite loops
+    setTimeout(() => {
+      clearInterval(poll);
+    }, 30000);
   };
 
   return (

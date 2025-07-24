@@ -23,6 +23,7 @@ interface FileExplorerProps {
 }
 
 const FileExplorer: React.FC<FileExplorerProps> = ({ files }) => {
+  console.log('[FileExplorer.tsx] Rendering with files prop:', files);
   return (
     <Drawer
       sx={{

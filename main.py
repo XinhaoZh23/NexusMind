@@ -255,8 +255,8 @@ async def upload_file(
         session.refresh(db_file)
         logger.info(f"Created file record in DB with ID: {db_file.id}")
 
-        # 3. Queue the processing task
-        task = process_file.delay(str(db_file.id))
+        # 3. Queue the processing task, now passing both file_id and brain_id
+        task = process_file.delay(str(db_file.id), str(brain_id))
 
         return UploadResponse(
             task_id=task.id, message="File upload accepted and is being processed."

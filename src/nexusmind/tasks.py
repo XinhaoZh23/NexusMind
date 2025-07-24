@@ -37,13 +37,14 @@ def setup_processor_registry() -> ProcessorRegistry:
 
 
 @app.task(bind=True)
-def process_file(self, file_id: str):
+def process_file(self, file_id: str, brain_id: str):
     """
     Celery task to process a file stored in S3.
     It updates the file's status in the database throughout the process.
     """
     logger.info(
-        f"Starting file processing task {self.request.id} for file_id: {file_id}"
+        f"Starting file processing task {self.request.id} "
+        f"for file_id: {file_id} and brain_id: {brain_id}"
     )
 
     with Session(engine) as session:
@@ -62,15 +63,17 @@ def process_file(self, file_id: str):
             session.add(file_record)
             session.commit()
 
-            # 2. Load the associated brain
+            # 2. Load the associated brain using the provided brain_id
+            target_brain_id = UUID(brain_id)
             try:
-                brain = Brain.load(file_record.brain_id)
+                brain = Brain.load(target_brain_id)
             except FileNotFoundError:
                 logger.warning(
-                    f"Brain {file_record.brain_id} not found. Creating a new one."
+                    f"Brain {target_brain_id} not found. Creating a new one."
                 )
                 brain = Brain(
-                    brain_id=file_record.brain_id,
+                    brain_id=target_brain_id,
+                    name=f"Brain {target_brain_id}", # Give a more descriptive default name
                     llm_model_name="gpt-4o-mini",
                     temperature=0.0,
                     max_tokens=100,
@@ -105,6 +108,8 @@ def process_file(self, file_id: str):
                 )
 
             # 6. Update status to SUCCESS
+            # We need to refresh the file_record to avoid detached instance error
+            session.refresh(file_record)
             file_record.status = FileStatusEnum.SUCCESS
             session.add(file_record)
             session.commit()
@@ -121,12 +126,12 @@ def process_file(self, file_id: str):
             )
             # Rollback any changes and update status to FAILURE
             session.rollback()
-            file_record = session.exec(
+            file_record_to_fail = session.exec(
                 select(File).where(File.id == UUID(file_id))
             ).first()
-            if file_record:
-                file_record.status = FileStatusEnum.FAILURE
-                session.add(file_record)
+            if file_record_to_fail:
+                file_record_to_fail.status = FileStatusEnum.FAILURE
+                session.add(file_record_to_fail)
                 session.commit()
 
             self.update_state(state="FAILURE", meta={"error": str(e)})
