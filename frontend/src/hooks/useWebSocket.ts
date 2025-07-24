@@ -52,19 +52,25 @@ export const useWebSocket = (addMessage: (message: Omit<Message, 'id'>) => void)
     };
   }, [addMessage]);
 
-  const sendMessage = useCallback((messageText: string) => {
+  const sendMessage = useCallback((messageText: string, brainId: string | null) => {
     if (socket && socket.connected) {
-      console.log('Sending message to server:', messageText);
+      if (!brainId) {
+        console.error('No brain selected, cannot send message.');
+        addMessage({ sender: 'bot', text: 'Please select a brain before sending a message.' });
+        return;
+      }
+      console.log(`Sending message to server for brain ${brainId}:`, messageText);
       socket.emit('message', {
         type: 'qna',
         payload: {
           question: messageText,
+          brain_id: brainId,
         },
       });
     } else {
       console.error('Socket not connected, cannot send message.');
     }
-  }, [socket]);
+  }, []);
 
   return { isConnected, sendMessage };
 };

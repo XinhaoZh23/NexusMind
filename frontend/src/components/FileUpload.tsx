@@ -10,13 +10,14 @@ export interface UploadedFile {
 
 interface FileUploadProps {
   onFileUploaded: (fileName: string) => void;
+  currentBrainId: string | null; // Add the new prop here
 }
 
 const VisuallyHiddenInput = styled('input')({
   display: 'none',
 });
 
-export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
+export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, currentBrainId }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadProgress, setUploadProgress] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -35,9 +36,14 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
     }
     const fileName = file.name; // Get the filename here
 
+    if (!currentBrainId) {
+      setUploadStatus({ status: 'error', message: '❌ No brain selected.' });
+      return;
+    }
+
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('brain_id', '00000000-0000-0000-0000-000000000001');
+    formData.append('brain_id', currentBrainId);
 
     setIsUploading(true);
     setUploadStatus({ status: 'uploading', message: `Uploading ${file.name}...` });

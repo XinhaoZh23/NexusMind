@@ -151,7 +151,7 @@ function App() {
     };
 
     setMessages([...messages, userMessage]);
-    sendMessage(inputValue); // Send message through WebSocket
+    sendMessage(inputValue, currentBrainId); // Send message through WebSocket with brain_id
     setInputValue('');
   };
 

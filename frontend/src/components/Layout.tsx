@@ -89,7 +89,7 @@ const Layout: React.FC<LayoutProps> = ({
       </Box>
       <Divider sx={{ mt: 'auto' }} />
       <Box sx={{ p: 2 }}>
-        <FileUpload onFileUploaded={onFileUploaded} />
+        <FileUpload onFileUploaded={onFileUploaded} currentBrainId={currentBrainId} />
       </Box>
     </Drawer>
   );

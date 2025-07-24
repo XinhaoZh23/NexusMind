@@ -28,9 +28,14 @@ io.on('connection', (socket) => {
     try {
       const requestPayload = {
         question: data.payload.question,
-        // For now, we hardcode the brain_id as we did in the file upload
-        brain_id: '00000000-0000-0000-0000-000000000001', 
+        // The brain_id is now dynamically passed from the frontend
+        brain_id: data.payload.brain_id, 
       };
+
+      // Add a check to ensure brain_id is present
+      if (!requestPayload.brain_id) {
+        throw new Error("brain_id is missing in the payload.");
+      }
 
       console.log(`[Socket ${socket.id}] Forwarding to FastAPI:`, requestPayload);
 
