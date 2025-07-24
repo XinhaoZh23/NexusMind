@@ -73,7 +73,7 @@ def process_file(self, file_id: str, brain_id: str):
                 )
                 brain = Brain(
                     brain_id=target_brain_id,
-                    name=f"Brain {target_brain_id}", # Give a more descriptive default name
+                    name=f"Brain {target_brain_id}",
                     llm_model_name="gpt-4o-mini",
                     temperature=0.0,
                     max_tokens=100,

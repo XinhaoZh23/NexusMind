@@ -72,7 +72,7 @@ class Brain(BaseModel):
         # that are not part of the serialization.
         brain.llm_endpoint = brain._create_llm_endpoint()
         brain.vector_store = brain._create_vector_store()
-        
+
         # The vector store might have been loaded from disk without an
         # active LLM endpoint. We need to set it explicitly.
         if brain.vector_store:

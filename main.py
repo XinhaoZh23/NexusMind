@@ -149,6 +149,7 @@ class BrainInfo(BaseModel):
     id: uuid.UUID
     name: str
 
+
 class BrainsList(BaseModel):
     brains: List[BrainInfo]
 
@@ -159,7 +160,8 @@ class FileInfo(BaseModel):
     status: FileStatusEnum
 
     class Config:
-        from_attributes = True # Automatically map SQLAlchemy model to Pydantic model
+        from_attributes = True  # Automatically map SQLAlchemy model to Pydantic model
+
 
 class FilesList(BaseModel):
     files: List[FileInfo]
@@ -206,7 +208,7 @@ async def create_new_brain():
             temperature=0.0,
             max_tokens=256,
         )
-        new_brain.name = f"New Brain {str(new_brain.brain_id)[:8]}" # Give it a default name
+        new_brain.name = f"New Brain {str(new_brain.brain_id)[:8]}"
         new_brain.save()
         logger.info(f"Successfully created and saved new brain {new_brain.brain_id}")
         return BrainInfo(id=new_brain.brain_id, name=new_brain.name)
@@ -215,7 +217,8 @@ async def create_new_brain():
         raise HTTPException(status_code=500, detail="Failed to create new brain.")
 
 
-@app.put("/brains/{brain_id}", dependencies=[Depends(get_api_key)], response_model=BrainInfo)
+@app.put("/brains/{brain_id}", dependencies=[Depends(get_api_key)],
+         response_model=BrainInfo)
 async def update_brain_name(
     brain_id: uuid.UUID,
     request: UpdateBrainRequest
@@ -229,13 +232,19 @@ async def update_brain_name(
         brain.save()
         return BrainInfo(id=brain.brain_id, name=brain.name)
     except FileNotFoundError:
-        raise HTTPException(status_code=404, detail=f"Brain with ID {brain_id} not found.")
+        raise HTTPException(
+            status_code=404,
+            detail=f"Brain with ID {brain_id} not found.",
+        )
     except Exception as e:
         logger.error(f"Failed to update brain {brain_id}: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to update brain.")
 
 
-@app.get("/brains/{brain_id}/files", dependencies=[Depends(get_api_key)], response_model=FilesList)
+@app.get("/brains/{brain_id}/files",
+         dependencies=[Depends(get_api_key)],
+         response_model=FilesList,
+         )
 async def get_brain_files(brain_id: uuid.UUID, session: Session = Depends(get_session)):
     """
     Retrieves all files associated with a specific brain.
@@ -244,7 +253,7 @@ async def get_brain_files(brain_id: uuid.UUID, session: Session = Depends(get_se
     if not files:
         # Return an empty list if no files are found, which is a valid case.
         return FilesList(files=[])
-    
+
     return FilesList(files=files)
 
 
