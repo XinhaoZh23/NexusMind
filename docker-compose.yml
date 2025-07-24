@@ -63,6 +63,29 @@ services:
       - minio
     # restart: unless-stopped
 
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: nexusmind_worker
+    volumes:
+      - ./src:/app/src
+      - ./main.py:/app/main.py
+      - ./brains:/app/brains
+      - ./storage:/app/storage
+    env_file:
+      - ./.env
+    environment:
+      - PYTHONPATH=/app/src
+      - POSTGRES_HOST=postgres
+      - REDIS_HOST=redis
+      - MINIO_ENDPOINT=http://minio:9000
+    command: poetry run celery -A nexusmind.celery_app.app worker --loglevel=info
+    depends_on:
+      - redis
+      - postgres
+      - minio
+
 volumes:
   postgres_data: {}
   redis_data: {}

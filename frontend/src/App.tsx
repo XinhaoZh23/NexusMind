@@ -160,6 +160,10 @@ function App() {
       sender: 'bot',
       text: `✅ File "${fileName}" has been uploaded and is being processed.`,
     });
+    // After a file is uploaded, refresh the file list for the current brain.
+    if (currentBrainId) {
+      fetchFilesForBrain(currentBrainId);
+    }
   };
 
   return (
