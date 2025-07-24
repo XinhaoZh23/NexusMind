@@ -139,6 +139,28 @@ function App() {
     }
   };
 
+  const handleCreateBrain = async () => {
+    try {
+      // No request body is needed, the backend will create a brain with defaults
+      const response = await axios.post('/api/brains', {}, {
+        headers: {
+          'X-API-Key': 'your-super-secret-key',
+        },
+      });
+      // After creating, fetch the updated list of brains
+      await fetchBrains();
+      // Optionally, select the new brain automatically
+      const newBrainId = response.data.id;
+      if (newBrainId) {
+        handleSelectBrain(newBrainId);
+      }
+    } catch (error) {
+      console.error('Failed to create brain:', error);
+      // Optionally, show an error message to the user
+      alert('Error: Could not create a new brain.');
+    }
+  };
+
   const { isConnected, sendMessage } = useWebSocket(addMessage);
 
   const handleSendMessage = () => {
@@ -213,6 +235,7 @@ function App() {
         currentBrainId={currentBrainId}
         onSelectBrain={handleSelectBrain}
         onOpenRenameDialog={handleOpenRenameDialog}
+        onCreateBrain={handleCreateBrain}
       />
       {/* Main Content */}
       <Box

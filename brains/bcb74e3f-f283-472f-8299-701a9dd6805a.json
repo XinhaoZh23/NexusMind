@@ -1,8 +1,0 @@
-{
-    "brain_id": "bcb74e3f-f283-472f-8299-701a9dd6805a",
-    "name": "Brain bcb74e3f-f283-472f-8299-701a9dd6805a",
-    "history": [],
-    "llm_model_name": "gpt-4o",
-    "temperature": 0.0,
-    "max_tokens": 256
-}

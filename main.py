@@ -194,6 +194,27 @@ async def get_all_brains():
     return BrainsList(brains=brain_infos)
 
 
+@app.post("/brains", dependencies=[Depends(get_api_key)], response_model=BrainInfo)
+async def create_new_brain():
+    """
+    Creates a new brain with default settings and saves it.
+    """
+    try:
+        # Create a new brain with a unique ID and default settings
+        new_brain = Brain(
+            llm_model_name="gpt-4o-mini",  # A sensible default
+            temperature=0.0,
+            max_tokens=256,
+        )
+        new_brain.name = f"New Brain {str(new_brain.brain_id)[:8]}" # Give it a default name
+        new_brain.save()
+        logger.info(f"Successfully created and saved new brain {new_brain.brain_id}")
+        return BrainInfo(id=new_brain.brain_id, name=new_brain.name)
+    except Exception as e:
+        logger.error(f"Failed to create new brain: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to create new brain.")
+
+
 @app.put("/brains/{brain_id}", dependencies=[Depends(get_api_key)], response_model=BrainInfo)
 async def update_brain_name(
     brain_id: uuid.UUID,

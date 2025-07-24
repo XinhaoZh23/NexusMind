@@ -28,6 +28,14 @@ class FaissVectorStore(VectorStoreBase):
         if self.store_path and Path(self.store_path).exists():
             self._load_from_disk()
 
+    def set_llm_endpoint(self, llm_endpoint: LLMEndpoint):
+        """
+        Sets the LLM endpoint for the vector store.
+        This is useful when the vector store is loaded from disk and the
+        LLM endpoint needs to be re-initialized.
+        """
+        self.llm_endpoint = llm_endpoint
+
     def _get_chunk_path(self) -> Path:
         """Helper to get the path for the chunk mapping file."""
         if not self.store_path:

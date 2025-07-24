@@ -48,6 +48,8 @@ services:
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
+      - ./brains:/app/brains
+      - ./storage:/app/storage
     env_file:
       - ./.env
     environment:

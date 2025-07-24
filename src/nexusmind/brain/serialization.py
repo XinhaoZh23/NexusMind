@@ -39,4 +39,8 @@ def load_brain(brain_id: uuid.UUID) -> Brain:
 
     with open(path, "r") as f:
         data = json.load(f)
-        return Brain(**data)
+        # Use model_validate to create the instance from data
+        # without triggering the custom __init__ method.
+        # The initialization of runtime components will be handled
+        # by the Brain.load() classmethod.
+        return Brain.model_validate(data)

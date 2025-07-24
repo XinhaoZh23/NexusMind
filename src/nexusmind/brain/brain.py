@@ -66,4 +66,16 @@ class Brain(BaseModel):
         logger.info(f"Loading brain state for brain_id: {brain_id}")
         from . import serialization
 
-        return serialization.load_brain(brain_id)
+        brain = serialization.load_brain(brain_id)
+
+        # After loading, we need to re-initialize the runtime components
+        # that are not part of the serialization.
+        brain.llm_endpoint = brain._create_llm_endpoint()
+        brain.vector_store = brain._create_vector_store()
+        
+        # The vector store might have been loaded from disk without an
+        # active LLM endpoint. We need to set it explicitly.
+        if brain.vector_store:
+            brain.vector_store.set_llm_endpoint(brain.llm_endpoint)
+
+        return brain

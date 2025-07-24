@@ -27,6 +27,7 @@ interface LayoutProps {
   currentBrainId: string | null;
   onSelectBrain: (brainId: string) => void;
   onOpenRenameDialog: (brain: Brain) => void;
+  onCreateBrain: () => void;
 }
 
 const Layout: React.FC<LayoutProps> = ({
@@ -35,6 +36,7 @@ const Layout: React.FC<LayoutProps> = ({
   currentBrainId,
   onSelectBrain,
   onOpenRenameDialog,
+  onCreateBrain,
 }) => {
   return (
     <Drawer
@@ -82,7 +84,7 @@ const Layout: React.FC<LayoutProps> = ({
           variant="outlined"
           startIcon={<AddCircleOutlineIcon />}
           fullWidth
-          onClick={() => alert('New Brain clicked!')}
+          onClick={onCreateBrain}
         >
           New Brain
         </Button>
