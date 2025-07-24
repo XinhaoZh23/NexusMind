@@ -153,6 +153,22 @@ class BrainsList(BaseModel):
     brains: List[BrainInfo]
 
 
+class FileInfo(BaseModel):
+    id: uuid.UUID
+    file_name: str
+    status: FileStatusEnum
+
+    class Config:
+        from_attributes = True # Automatically map SQLAlchemy model to Pydantic model
+
+class FilesList(BaseModel):
+    files: List[FileInfo]
+
+
+class UpdateBrainRequest(BaseModel):
+    name: str
+
+
 # --- API Endpoints ---
 @app.get("/brains", dependencies=[Depends(get_api_key)], response_model=BrainsList)
 async def get_all_brains():
@@ -176,6 +192,39 @@ async def get_all_brains():
             continue
 
     return BrainsList(brains=brain_infos)
+
+
+@app.put("/brains/{brain_id}", dependencies=[Depends(get_api_key)], response_model=BrainInfo)
+async def update_brain_name(
+    brain_id: uuid.UUID,
+    request: UpdateBrainRequest
+):
+    """
+    Updates the name of a specific brain.
+    """
+    try:
+        brain = load_brain(brain_id)
+        brain.name = request.name
+        brain.save()
+        return BrainInfo(id=brain.brain_id, name=brain.name)
+    except FileNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Brain with ID {brain_id} not found.")
+    except Exception as e:
+        logger.error(f"Failed to update brain {brain_id}: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to update brain.")
+
+
+@app.get("/brains/{brain_id}/files", dependencies=[Depends(get_api_key)], response_model=FilesList)
+async def get_brain_files(brain_id: uuid.UUID, session: Session = Depends(get_session)):
+    """
+    Retrieves all files associated with a specific brain.
+    """
+    files = session.query(FileModel).filter(FileModel.brain_id == brain_id).all()
+    if not files:
+        # Return an empty list if no files are found, which is a valid case.
+        return FilesList(files=[])
+    
+    return FilesList(files=files)
 
 
 @app.post("/upload", dependencies=[Depends(get_api_key)], response_model=UploadResponse)

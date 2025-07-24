@@ -5,34 +5,38 @@ import type { Message } from '../App'; // Correctly import as a type
 // The URL of our WebSocket gateway
 const SOCKET_URL = 'http://localhost:8080';
 
+// Create the socket instance outside the component to prevent re-creation on re-renders.
+// This is a common pattern to avoid issues with React's strict mode and HMR.
+const socket: Socket = io({
+  transports: ['websocket'], // Use WebSocket transport
+  // Explicitly set the path to match the Vite proxy config.
+  // This prevents the client from incorrectly guessing the path (e.g., adding /api).
+  path: '/socket.io/',
+});
+
 export const useWebSocket = (addMessage: (message: Omit<Message, 'id'>) => void) => {
-  const [socket, setSocket] = useState<Socket | null>(null);
-  const [isConnected, setIsConnected] = useState(false);
+  const [isConnected, setIsConnected] = useState(socket.connected);
 
   useEffect(() => {
     // Connect to the WebSocket server
     // We use the '/api' path that we configured in vite.config.ts proxy
-    const newSocket = io(SOCKET_URL, {
-      path: '/api/socket.io',
-      transports: ['websocket'],
-    });
-
-    setSocket(newSocket);
+    // The socket instance is now global, so we don't need to re-connect here.
+    // We only need to set up event listeners.
 
     // Event listener for successful connection
-    newSocket.on('connect', () => {
+    socket.on('connect', () => {
       console.log('WebSocket connected successfully!');
       setIsConnected(true);
     });
 
     // Event listener for disconnection
-    newSocket.on('disconnect', () => {
+    socket.on('disconnect', () => {
       console.log('WebSocket disconnected.');
       setIsConnected(false);
     });
 
     // Event listener for incoming messages from the server
-    newSocket.on('message', (data: any) => {
+    socket.on('message', (data: any) => {
       console.log('Message received from server:', data);
       const serverMessage: Omit<Message, 'id'> = {
         sender: 'bot',
@@ -44,7 +48,7 @@ export const useWebSocket = (addMessage: (message: Omit<Message, 'id'>) => void)
     // Cleanup on component unmount
     return () => {
       console.log('Disconnecting WebSocket.');
-      newSocket.disconnect();
+      socket.disconnect();
     };
   }, [addMessage]);
 

@@ -7,6 +7,7 @@ import { useWebSocket } from './hooks/useWebSocket';
 import { FileUpload } from './components/FileUpload';
 import type { UploadedFile } from './components/FileUpload';
 import FileExplorer from './components/FileExplorer';
+import RenameBrainDialog from './components/RenameBrainDialog'; // Import the new component
 import { AppBar, Box, CssBaseline, Toolbar, Typography } from '@mui/material';
 
 const leftDrawerWidth = 240;
@@ -25,6 +26,13 @@ export interface Brain {
   name: string;
 }
 
+// Define a type for the File object
+export interface BrainFile {
+  id: string;
+  file_name: string;
+}
+
+
 // This is the initial dummy data, which will be managed by state now
 const initialMessages: Message[] = [
   { id: 1, sender: 'user', text: 'Hello, I have a question about my recent order.' },
@@ -37,6 +45,9 @@ function App() {
   const [inputValue, setInputValue] = useState('');
   const [brains, setBrains] = useState<Brain[]>([]);
   const [currentBrainId, setCurrentBrainId] = useState<string | null>(null);
+  const [files, setFiles] = useState<BrainFile[]>([]);
+  const [isRenameDialogOpen, setIsRenameDialogOpen] = useState(false);
+  const [brainToRename, setBrainToRename] = useState<Brain | null>(null);
 
   const addMessage = useCallback((newMessage: Omit<Message, 'id'>) => {
     setMessages((prevMessages) => [
@@ -45,28 +56,88 @@ function App() {
     ]);
   }, []);
 
+  const fetchBrains = async () => {
+    try {
+      const response = await axios.get('/api/brains', {
+        headers: {
+          'X-API-Key': 'your-super-secret-key',
+        },
+      });
+      const brainsData = response.data.brains;
+      setBrains(brainsData);
+      return brainsData;
+    } catch (error) {
+      console.error('Failed to fetch brains:', error);
+      return [];
+    }
+  };
+
+  const fetchFilesForBrain = async (brainId: string) => {
+    try {
+      const response = await axios.get(`/api/brains/${brainId}/files`, {
+        headers: {
+          'X-API-Key': 'your-super-secret-key',
+        },
+      });
+      setFiles(response.data.files);
+    } catch (error) {
+      console.error(`Failed to fetch files for brain ${brainId}:`, error);
+      setFiles([]); // Reset files on error
+    }
+  };
+
   // Fetch brains on component mount
   useEffect(() => {
-    const fetchBrains = async () => {
-      try {
-        const response = await axios.get('/api/brains', {
-          headers: {
-            'X-API-Key': 'your-super-secret-key',
-          },
-        });
-        setBrains(response.data.brains);
-        // Set the first brain as the current one by default
-        if (response.data.brains.length > 0) {
-          setCurrentBrainId(response.data.brains[0].id);
-        }
-      } catch (error) {
-        console.error('Failed to fetch brains:', error);
-        // You might want to add a user-facing error message here
+    const initialLoad = async () => {
+      const brainsData = await fetchBrains();
+      // Set the first brain as the current one and fetch its files
+      if (brainsData.length > 0) {
+        const firstBrainId = brainsData[0].id;
+        setCurrentBrainId(firstBrainId);
+        fetchFilesForBrain(firstBrainId);
       }
     };
-
-    fetchBrains();
+  
+    initialLoad();
   }, []);
+
+  const handleSelectBrain = (brainId: string) => {
+    setCurrentBrainId(brainId);
+    fetchFilesForBrain(brainId);
+  };
+
+  const handleOpenRenameDialog = (brain: Brain) => {
+    setBrainToRename(brain);
+    setIsRenameDialogOpen(true);
+  };
+
+  const handleCloseRenameDialog = () => {
+    setIsRenameDialogOpen(false);
+    setBrainToRename(null);
+  };
+
+  const handleRenameBrain = async (newName: string) => {
+    if (!brainToRename) return;
+
+    try {
+      await axios.put(
+        `/api/brains/${brainToRename.id}`,
+        { name: newName },
+        {
+          headers: {
+            'X-API-Key': 'your-super-secret-key',
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+      // Refresh the brains list to show the new name
+      await fetchBrains();
+      handleCloseRenameDialog();
+    } catch (error) {
+      console.error('Failed to rename brain:', error);
+      // Optionally, show an error message to the user
+    }
+  };
 
   const { isConnected, sendMessage } = useWebSocket(addMessage);
 
@@ -108,7 +179,13 @@ function App() {
           </Typography>
         </Toolbar>
       </AppBar>
-      <Layout onFileUploaded={handleFileUploaded} />
+      <Layout
+        onFileUploaded={handleFileUploaded}
+        brains={brains}
+        currentBrainId={currentBrainId}
+        onSelectBrain={handleSelectBrain}
+        onOpenRenameDialog={handleOpenRenameDialog}
+      />
       {/* Main Content */}
       <Box
         component="main"
@@ -132,7 +209,13 @@ function App() {
           isConnected={isConnected}
         />
       </Box>
-      <FileExplorer />
+      <FileExplorer files={files} />
+      <RenameBrainDialog
+        open={isRenameDialogOpen}
+        onClose={handleCloseRenameDialog}
+        onRename={handleRenameBrain}
+        brain={brainToRename}
+      />
     </Box>
   );
 }

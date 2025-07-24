@@ -12,29 +12,17 @@ import {
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DeleteIcon from '@mui/icons-material/Delete';
+import type { BrainFile } from '../App'; // Import the BrainFile type
 
 const drawerWidth = 280;
 
-// Dummy data for presentation
-const dummyFiles = [
-  { id: '1', name: 'annual_report_2023.pdf' },
-  { id: '2', name: 'project_alpha_requirements.docx' },
-  { id: '3', name: 'market_analysis_q4.xlsx' },
-];
-
-interface File {
-  id: string;
-  name: string;
-}
-
-// For now, we are not using props, but defining them for future use.
 interface FileExplorerProps {
-  files?: File[];
+  files: BrainFile[];
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   onDeleteFile?: (fileId: string) => void;
 }
 
-const FileExplorer: React.FC<FileExplorerProps> = () => {
+const FileExplorer: React.FC<FileExplorerProps> = ({ files }) => {
   return (
     <Drawer
       sx={{
@@ -58,7 +46,7 @@ const FileExplorer: React.FC<FileExplorerProps> = () => {
       </Box>
       <Divider />
       <List>
-        {dummyFiles.map((file) => (
+        {files.map((file) => (
           <ListItem
             key={file.id}
             secondaryAction={
@@ -70,7 +58,7 @@ const FileExplorer: React.FC<FileExplorerProps> = () => {
             <ListItemIcon>
               <DescriptionIcon />
             </ListItemIcon>
-            <ListItemText primary={file.name} sx={{ wordBreak: 'break-all' }}/>
+            <ListItemText primary={file.file_name} sx={{ wordBreak: 'break-all' }}/>
           </ListItem>
         ))}
       </List>

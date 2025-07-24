@@ -11,25 +11,31 @@ import {
   ListItemIcon,
   ListItemText,
   Button,
+  IconButton,
 } from '@mui/material';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import EditIcon from '@mui/icons-material/Edit'; // Import EditIcon
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import { FileUpload } from './FileUpload';
+import type { Brain } from '../App'; // Import the Brain type
 
 const drawerWidth = 240;
 
-// Dummy data for presentation purposes
-const dummyBrains = [
-  { id: '1', name: 'Default Brain' },
-  { id: '2', name: 'Project Alpha' },
-  { id: '3', name: 'Personal Notes' },
-];
-
 interface LayoutProps {
-  onFileUploaded: (fileName: string) => void;
+  onFileUploaded: (fileName:string) => void;
+  brains: Brain[];
+  currentBrainId: string | null;
+  onSelectBrain: (brainId: string) => void;
+  onOpenRenameDialog: (brain: Brain) => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ onFileUploaded }) => {
+const Layout: React.FC<LayoutProps> = ({
+  onFileUploaded,
+  brains,
+  currentBrainId,
+  onSelectBrain,
+  onOpenRenameDialog,
+}) => {
   return (
     <Drawer
       variant="permanent"
@@ -49,9 +55,20 @@ const Layout: React.FC<LayoutProps> = ({ onFileUploaded }) => {
         </Typography>
       </Box>
       <List>
-        {dummyBrains.map((brain, index) => (
-          <ListItem key={brain.id} disablePadding>
-            <ListItemButton selected={index === 0}>
+        {brains.map((brain) => (
+          <ListItem
+            key={brain.id}
+            disablePadding
+            secondaryAction={
+              <IconButton edge="end" aria-label="edit" onClick={() => onOpenRenameDialog(brain)}>
+                <EditIcon />
+              </IconButton>
+            }
+          >
+            <ListItemButton
+              selected={brain.id === currentBrainId}
+              onClick={() => onSelectBrain(brain.id)}
+            >
               <ListItemIcon>
                 <PsychologyIcon />
               </ListItemIcon>
