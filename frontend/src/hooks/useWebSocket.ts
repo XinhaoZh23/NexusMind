@@ -38,9 +38,24 @@ export const useWebSocket = (addMessage: (message: Omit<Message, 'id'>) => void)
     // Event listener for incoming messages from the server
     socket.on('message', (data: any) => {
       console.log('Message received from server:', data);
+      
+      let messageText: string;
+      // Check if the data object has an 'answer' property for successful responses
+      if (data && data.answer) {
+        messageText = data.answer;
+      } 
+      // Check for our specific error format from the gateway
+      else if (data && data.error) {
+        messageText = `Error: ${data.details || data.error}`;
+      }
+      // Fallback for any other unexpected format
+      else {
+        messageText = JSON.stringify(data);
+      }
+
       const serverMessage: Omit<Message, 'id'> = {
         sender: 'bot',
-        text: data.reply || JSON.stringify(data),
+        text: messageText,
       };
       addMessage(serverMessage);
     });
