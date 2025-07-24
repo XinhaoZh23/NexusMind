@@ -2,18 +2,19 @@ import { useState, useEffect, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 import type { Message } from '../App'; // Correctly import as a type
 
-// No hardcoded URL needed. io() will default to the current host.
-// const SOCKET_URL = 'http://localhost:8080';
+// The URL of our WebSocket gateway
+const SOCKET_URL = 'http://localhost:8080';
 
 export const useWebSocket = (addMessage: (message: Omit<Message, 'id'>) => void) => {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
-    // Connect to the WebSocket server running on the same host as the web app.
-    // Vite will proxy requests to /socket.io to our gateway on port 8080.
-    const newSocket = io({
-      transports: ['websocket'], // Use WebSocket transport
+    // Connect to the WebSocket server
+    // We use the '/api' path that we configured in vite.config.ts proxy
+    const newSocket = io(SOCKET_URL, {
+      path: '/api/socket.io',
+      transports: ['websocket'],
     });
 
     setSocket(newSocket);

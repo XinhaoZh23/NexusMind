@@ -19,6 +19,12 @@ export interface Message {
   text: string;
 }
 
+// Define a type for the Brain object
+export interface Brain {
+  id: string;
+  name: string;
+}
+
 // This is the initial dummy data, which will be managed by state now
 const initialMessages: Message[] = [
   { id: 1, sender: 'user', text: 'Hello, I have a question about my recent order.' },
@@ -29,12 +35,37 @@ const initialMessages: Message[] = [
 function App() {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputValue, setInputValue] = useState('');
+  const [brains, setBrains] = useState<Brain[]>([]);
+  const [currentBrainId, setCurrentBrainId] = useState<string | null>(null);
 
   const addMessage = useCallback((newMessage: Omit<Message, 'id'>) => {
     setMessages((prevMessages) => [
       ...prevMessages,
       { id: prevMessages.length + 1, ...newMessage },
     ]);
+  }, []);
+
+  // Fetch brains on component mount
+  useEffect(() => {
+    const fetchBrains = async () => {
+      try {
+        const response = await axios.get('/api/brains', {
+          headers: {
+            'X-API-Key': 'your-super-secret-key',
+          },
+        });
+        setBrains(response.data.brains);
+        // Set the first brain as the current one by default
+        if (response.data.brains.length > 0) {
+          setCurrentBrainId(response.data.brains[0].id);
+        }
+      } catch (error) {
+        console.error('Failed to fetch brains:', error);
+        // You might want to add a user-facing error message here
+      }
+    };
+
+    fetchBrains();
   }, []);
 
   const { isConnected, sendMessage } = useWebSocket(addMessage);

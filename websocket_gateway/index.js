@@ -15,7 +15,7 @@ const io = new Server(server, {
 });
 
 const FASTAPI_URL = 'http://localhost:8000/chat';
-const API_KEY = 'nexusmind-power-user-key'; // Replace with your actual API key
+const API_KEY = 'your-super-secret-key'; // Use the correct API key
 
 // Listen for new connections
 io.on('connection', (socket) => {

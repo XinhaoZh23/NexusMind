@@ -33,6 +33,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
     if (!file) {
       return;
     }
+    const fileName = file.name; // Get the filename here
 
     const formData = new FormData();
     formData.append('file', file);
@@ -42,10 +43,10 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
     setUploadStatus({ status: 'uploading', message: `Uploading ${file.name}...` });
 
     try {
-      const response = await axios.post('/upload-api/upload', formData, {
+      const response = await axios.post('/api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'X-API-Key': 'nexusmind-power-user-key',
+          'X-API-Key': 'your-super-secret-key', // Use the correct API key
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
@@ -56,9 +57,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded }) => {
       });
       setUploadStatus({
         status: 'success',
-        message: `File '${response.data.message}' uploaded successfully.`,
+        message: `File '${fileName}' uploaded successfully.`, // Use the filename here
       });
-      onFileUploaded(response.data.message); // Use the correct prop
+      onFileUploaded(fileName); // Pass the correct filename to the callback
       // pollFileStatus(response.data.message); // This line was removed as per the edit hint
     } catch (error) {
       console.error('Error uploading file:', error);

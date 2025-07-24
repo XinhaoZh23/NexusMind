@@ -1,6 +1,6 @@
 import uuid
 from functools import lru_cache
-from typing import Dict
+from typing import Dict, List
 
 # import boto3
 import uvicorn
@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 from starlette_exporter import PrometheusMiddleware, handle_metrics
 
 from nexusmind.brain.brain import Brain
+from nexusmind.brain.serialization import BRAIN_STORAGE_PATH, load_brain
 from nexusmind.celery_app import app as celery_app
 from nexusmind.config import CoreConfig, get_core_config
 from nexusmind.database import create_db_and_tables, get_session
@@ -144,7 +145,39 @@ class StatusResponse(BaseModel):
     result: Dict | str | None
 
 
+class BrainInfo(BaseModel):
+    id: uuid.UUID
+    name: str
+
+class BrainsList(BaseModel):
+    brains: List[BrainInfo]
+
+
 # --- API Endpoints ---
+@app.get("/brains", dependencies=[Depends(get_api_key)], response_model=BrainsList)
+async def get_all_brains():
+    """
+    Retrieves a list of all available brains.
+    It scans the `brains` directory and loads the metadata for each brain.
+    """
+    brain_infos = []
+    if not BRAIN_STORAGE_PATH.exists():
+        return BrainsList(brains=[])
+
+    for brain_file in BRAIN_STORAGE_PATH.glob("*.json"):
+        try:
+            brain_id_str = brain_file.stem
+            brain_id = uuid.UUID(brain_id_str)
+            # We can load the full brain to get its name
+            brain = load_brain(brain_id)
+            brain_infos.append(BrainInfo(id=brain.brain_id, name=brain.name))
+        except (ValueError, FileNotFoundError) as e:
+            logger.error(f"Could not load brain from file {brain_file}: {e}")
+            continue
+
+    return BrainsList(brains=brain_infos)
+
+
 @app.post("/upload", dependencies=[Depends(get_api_key)], response_model=UploadResponse)
 async def upload_file(
     brain_id: uuid.UUID = Form(...),

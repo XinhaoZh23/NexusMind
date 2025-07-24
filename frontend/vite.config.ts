@@ -11,11 +11,11 @@ export default defineConfig({
         target: 'http://localhost:8080',
         ws: true, // Enable WebSocket proxying
       },
-      // Proxy for FastAPI Upload Endpoint
-      '/upload-api': {
-        target: 'http://localhost:8000', // CORRECTED: Target our FastAPI server
+      // Generic proxy for all FastAPI endpoints
+      '/api': {
+        target: 'http://localhost:8000',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/upload-api/, ''),
+        rewrite: (path) => path.replace(/^\/api/, ''),
       },
     },
   },
