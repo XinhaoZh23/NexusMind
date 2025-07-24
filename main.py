@@ -51,17 +51,19 @@ def on_startup():
     # Ensure the S3 bucket exists by manually creating dependencies
     config = get_core_config()
 
-    # Mirror the logic from get_s3_storage to correctly instantiate
-    client_kwargs = {
-        "aws_access_key_id": config.minio.access_key,
-        "aws_secret_access_key": config.minio.secret_key.get_secret_value(),
-        "region_name": "us-east-1",
-    }
-    if config.minio.endpoint:
-        client_kwargs["endpoint_url"] = config.minio.endpoint
+    # Conditionally initialize S3 client only if Minio is configured
+    if config.minio:
+        # Mirror the logic from get_s3_storage to correctly instantiate
+        client_kwargs = {
+            "aws_access_key_id": config.minio.access_key,
+            "aws_secret_access_key": config.minio.secret_key.get_secret_value(),
+            "region_name": "us-east-1",
+        }
+        if config.minio.endpoint:
+            client_kwargs["endpoint_url"] = config.minio.endpoint
 
-    # s3_client = boto3.client("s3", **client_kwargs)
-    # s3_storage = S3Storage(config=config.minio, s3_client=s3_client)
+        # s3_client = boto3.client("s3", **client_kwargs)
+        # s3_storage = S3Storage(config=config.minio, s3_client=s3_client)
 
 
 # --- Configuration and Dependency Injection ---

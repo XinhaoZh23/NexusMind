@@ -9,9 +9,10 @@ import type { Message } from '../App'; // Correctly import as a type
 // This is a common pattern to avoid issues with React's strict mode and HMR.
 const socket: Socket = io({
   transports: ['websocket'], // Use WebSocket transport
-  // Explicitly set the path to match the Vite proxy config.
-  // This prevents the client from incorrectly guessing the path (e.g., adding /api).
-  path: '/socket.io/',
+  // Explicitly set the path to match the Nginx proxy config.
+  // The path must start with the location defined in nginx.conf (/ws/)
+  // followed by the standard socket.io path.
+  path: '/ws/socket.io/',
 });
 
 export const useWebSocket = (addMessage: (message: Omit<Message, 'id'>) => void) => {

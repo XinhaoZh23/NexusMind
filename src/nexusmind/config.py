@@ -1,5 +1,6 @@
-from pydantic import Field
+from pydantic import Field, validator
 from pydantic_settings import SettingsConfigDict
+import os
 
 from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
 
@@ -27,7 +28,7 @@ class CoreConfig(BaseConfig):
     openai_api_key: str
 
     # --- S3 Configuration ---
-    s3_bucket_name: str
+    s3_bucket_name: str | None = None
     aws_access_key_id: str | None = None
     aws_secret_access_key: str | None = None
     aws_region: str = "us-east-1"
@@ -48,7 +49,13 @@ class CoreConfig(BaseConfig):
 
     postgres: PostgresConfig = PostgresConfig()
     redis: RedisConfig = RedisConfig()
-    minio: MinioConfig = MinioConfig()
+    minio: MinioConfig | None = None
+
+    @validator("minio", pre=True, always=True)
+    def validate_minio(cls, v, values):
+        if os.getenv("MINIO_ENDPOINT"):
+            return MinioConfig()
+        return None
 
 
 def get_core_config() -> CoreConfig:

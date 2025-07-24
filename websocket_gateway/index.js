@@ -14,8 +14,15 @@ const io = new Server(server, {
   }
 });
 
-const FASTAPI_URL = 'http://localhost:8000/chat';
-const API_KEY = 'your-super-secret-key'; // Use the correct API key
+// Read the backend URL and API Key from environment variables
+const FASTAPI_URL = process.env.FASTAPI_URL;
+const API_KEY = process.env.API_KEY;
+
+// Exit if the environment variables are not set. This is a crucial check.
+if (!FASTAPI_URL || !API_KEY) {
+  console.error('FATAL ERROR: The FASTAPI_URL and API_KEY environment variables must be set.');
+  process.exit(1);
+}
 
 // Listen for new connections
 io.on('connection', (socket) => {

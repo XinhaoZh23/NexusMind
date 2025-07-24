@@ -1,6 +1,20 @@
 version: '3.8'
 
 services:
+  nginx:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.prod
+    container_name: nexusmind_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+    depends_on:
+      - nexusmind-api
+      - websocket-gateway
+    restart: unless-stopped
+
   postgres:
     image: postgres:13
     container_name: nexusmind_postgres
@@ -24,27 +38,14 @@ services:
       - redis_data:/data
     restart: unless-stopped
 
-  minio:
-    image: minio/minio
-    container_name: nexusmind_minio
-    ports:
-      - "9000:9000"  # API port
-      - "9001:9001"  # Console UI port
-    environment:
-      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
-      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
-    volumes:
-      - minio_data:/data
-    command: server /data --console-address ":9001"
-    restart: unless-stopped
-
   nexusmind-api:
     build:
       context: .
       dockerfile: Dockerfile
     container_name: nexusmind_api
-    ports:
-      - "8000:8000"
+    # The port is no longer exposed to the host. Nginx will handle traffic.
+    # ports:
+    #   - "8000:8000"
     volumes:
       - ./src:/app/src
       - ./main.py:/app/main.py
@@ -53,17 +54,16 @@ services:
     env_file:
       - ./.env
     environment:
-      # These values are specific to the docker environment and override .env
       - PYTHONPATH=/app/src
       - POSTGRES_HOST=postgres
       - REDIS_HOST=redis
-      - MINIO_ENDPOINT=http://minio:9000
-    command: poetry run uvicorn main:app --host 0.0.0.0 --port 8000 --log-level debug
+      # MINIO_ENDPOINT is removed as minio service is temporarily disabled
+    # The command should use port 5001 as referenced in nginx.conf
+    command: poetry run uvicorn main:app --host 0.0.0.0 --port 5001 --log-level debug
     depends_on:
       - postgres
       - redis
-      - minio
-    # restart: unless-stopped
+    restart: unless-stopped
 
   worker:
     build:
@@ -81,14 +81,26 @@ services:
       - PYTHONPATH=/app/src
       - POSTGRES_HOST=postgres
       - REDIS_HOST=redis
-      - MINIO_ENDPOINT=http://minio:9000
+      # MINIO_ENDPOINT is removed as minio service is temporarily disabled
     command: poetry run celery -A nexusmind.celery_app.app worker --loglevel=info
     depends_on:
       - redis
       - postgres
-      - minio
+    restart: unless-stopped
+
+  websocket-gateway:
+    build:
+      context: ./websocket_gateway
+      dockerfile: Dockerfile
+    container_name: websocket-gateway
+    # No ports need to be exposed to the host. Nginx communicates internally.
+    restart: always
+    environment:
+      - FASTAPI_URL=http://nexusmind-api:5001/chat
+      - API_KEY=your-super-secret-key
+    depends_on:
+      - nexusmind-api
 
 volumes:
   postgres_data: {}
-  redis_data: {}
-  minio_data: {} 
+  redis_data: {} 
