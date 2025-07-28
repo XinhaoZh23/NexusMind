@@ -2,8 +2,12 @@ from functools import lru_cache
 from pydantic import Field, validator
 from pydantic_settings import SettingsConfigDict, BaseSettings
 import os
+from typing import Dict
 
 from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
+
+# Module-level cache for CoreConfig instances
+_core_config_cache: Dict[str, "CoreConfig"] = {}
 
 
 class CoreConfig(BaseConfig):
@@ -64,13 +68,18 @@ class CoreConfig(BaseConfig):
         return None
 
 
-@lru_cache()
 def get_core_config() -> CoreConfig:
     """
-    Get the core config, cached to avoid multiple loads.
+    Get the core config.
 
     This function now checks the APP_ENV environment variable to determine
-    which .env file to load.
+    which .env file to load, and uses a manual, environment-aware cache
+    to avoid reloading configuration unnecessarily.
     """
     env_file = ".env.prod" if os.getenv("APP_ENV") == "production" else ".env"
-    return CoreConfig(_env_file=env_file)
+
+    if env_file not in _core_config_cache:
+        config = CoreConfig(_env_file=env_file)
+        _core_config_cache[env_file] = config
+
+    return _core_config_cache[env_file]

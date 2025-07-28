@@ -1,6 +1,6 @@
 import os
 import pytest
-from src.nexusmind.config import get_core_config
+from src.nexusmind.config import get_core_config, _core_config_cache
 
 
 @pytest.fixture(autouse=True)
@@ -9,8 +9,7 @@ def manage_test_environment():
     A fixture that runs before and after each test in this module.
     1. It changes the current working directory to the 'tests' folder
        so that the config loader can find the test-specific .env files.
-    2. It clears the lru_cache for the config loader to ensure that
-       each test gets a fresh configuration, respecting env changes.
+    2. It clears our custom config cache to ensure test isolation.
     3. It changes the directory back to the original after the test.
     """
     original_cwd = os.getcwd()
@@ -21,11 +20,12 @@ def manage_test_environment():
         pytest.skip("Could not find 'tests' directory. Skipping config loading tests.")
         
     os.chdir(tests_dir)
-    get_core_config.cache_clear()
+    _core_config_cache.clear()
     
     yield
     
-    get_core_config.cache_clear()
+    # Clean up after the test
+    _core_config_cache.clear()
     os.chdir(original_cwd)
 
 
