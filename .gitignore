@@ -44,3 +44,40 @@ coverage.xml
 
 # Development logs
 develop_log/
+
+# Environments
+.env
+.env*.local
+.env*.prod
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnp/
+.pnp.js
+
+# Folders
+.keys/
+brains/
+storage/
+celery/
+.pytest_cache/
+__pycache__/
+.mypy_cache/
+.venv/
+venv/
+node_modules/
+dist/
+build/
+.next/
+.idea/
+.vscode/
+*.swp
+*.swo
+*.swn
+*.bak
+*.bak2
+*.old
+
+# OS
+.DS_Store
+Thumbs.db
