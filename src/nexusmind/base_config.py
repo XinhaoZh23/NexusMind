@@ -1,4 +1,4 @@
-from pydantic import Field, SecretStr
+from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -17,10 +17,9 @@ class BaseConfig(BaseSettings):
     pass
 
 
-class PostgresConfig(BaseConfig):
+class PostgresConfig(BaseModel):
     """PostgreSQL configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="POSTGRES_")
     user: str
     password: SecretStr
     host: str
@@ -34,19 +33,18 @@ class PostgresConfig(BaseConfig):
         )
 
 
-class RedisConfig(BaseConfig):
+class RedisConfig(BaseModel):
     """Redis configuration."""
 
-    redis_host: str
-    redis_port: int
-    redis_db: int
+    host: str
+    port: int
+    db: int
 
 
-class MinioConfig(BaseConfig):
+class MinioConfig(BaseModel):
     """Minio/S3 configuration."""
 
-    model_config = SettingsConfigDict(env_prefix="MINIO_")
-    access_key: str = Field(alias="MINIO_ROOT_USER")
-    secret_key: SecretStr = Field(alias="MINIO_ROOT_PASSWORD")
+    access_key: str
+    secret_key: SecretStr
     endpoint: str
     bucket: str

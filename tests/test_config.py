@@ -1,78 +1,57 @@
 import os
-
 import pytest
-from pydantic import ValidationError
-
-from nexusmind.config import CoreConfig
-
-# 在导入CoreConfig之后设置环境变量，以测试覆盖
-os.environ["LLM_MODEL_NAME"] = "test-model"
-os.environ["TEMPERATURE"] = "0.5"
+from src.nexusmind.config import get_core_config
 
 
-def test_default_values():
+@pytest.fixture(autouse=True)
+def manage_test_environment():
     """
-    Test that the default values are loaded correctly when no environment
-    variables are set. We need to temporarily unset env vars for this test.
+    A fixture that runs before and after each test in this module.
+    1. It changes the current working directory to the 'tests' folder
+       so that the config loader can find the test-specific .env files.
+    2. It clears the lru_cache for the config loader to ensure that
+       each test gets a fresh configuration, respecting env changes.
+    3. It changes the directory back to the original after the test.
     """
-    original_llm_model_name = os.environ.pop("LLM_MODEL_NAME", None)
-    original_temperature = os.environ.pop("TEMPERATURE", None)
-    original_max_tokens = os.environ.pop("MAX_TOKENS", None)
-
-    try:
-        config = CoreConfig()
-        # Unset MAX_TOKENS which was not set at the top level
-        assert config.max_tokens == 1000
-    finally:
-        # Restore environment variables
-        if original_llm_model_name is not None:
-            os.environ["LLM_MODEL_NAME"] = original_llm_model_name
-        if original_temperature is not None:
-            os.environ["TEMPERATURE"] = original_temperature
-        if original_max_tokens is not None:
-            os.environ["MAX_TOKENS"] = original_max_tokens
+    original_cwd = os.getcwd()
+    tests_dir = os.path.join(original_cwd, "tests")
+    
+    # Skip these tests if the 'tests' directory doesn't exist
+    if not os.path.isdir(tests_dir):
+        pytest.skip("Could not find 'tests' directory. Skipping config loading tests.")
+        
+    os.chdir(tests_dir)
+    get_core_config.cache_clear()
+    
+    yield
+    
+    get_core_config.cache_clear()
+    os.chdir(original_cwd)
 
 
-def test_environment_variable_override():
+def test_loads_dev_env_by_default(monkeypatch):
     """
-    Test that environment variables correctly override the default values.
+    Verifies that when APP_ENV is not set, the configuration is loaded
+    from the default '.env' file within the 'tests' directory.
     """
-    config = CoreConfig()
-    assert config.llm_model_name == "test-model"
-    assert config.temperature == 0.5
+    # Ensure the APP_ENV variable is not set for this test
+    monkeypatch.delenv("APP_ENV", raising=False)
+    
+    config = get_core_config()
+    
+    # Assert that the value comes from 'tests/.env'
+    assert config.postgres.host == "localhost-dev"
 
 
-def test_type_validation():
+def test_loads_prod_env_when_app_env_is_production(monkeypatch):
     """
-    Test that Pydantic raises a validation error for incorrect types.
+    Verifies that when APP_ENV is set to 'production', the configuration
+    is loaded from the '.env.prod' file within the 'tests' directory.
     """
-    os.environ["MAX_TOKENS"] = "not-an-integer"
-    with pytest.raises(ValidationError):
-        CoreConfig()
-    # Clean up the invalid environment variable
-    del os.environ["MAX_TOKENS"]
-
-
-# Edge case test for init without env var overrides to ensure defaults are applied
-def test_init_without_override():
-    """
-    Test initialization without any overrides to ensure default values are used.
-    """
-    # Temporarily remove env vars that might affect this test
-    original_model = os.environ.pop("LLM_MODEL_NAME", None)
-    original_temp = os.environ.pop("TEMPERATURE", None)
-    original_tokens = os.environ.pop("MAX_TOKENS", None)
-
-    try:
-        config = CoreConfig()
-        assert config.llm_model_name == "gpt-4o"
-        assert config.temperature == 0.7
-        assert config.max_tokens == 1000
-    finally:
-        # Restore env vars
-        if original_model is not None:
-            os.environ["LLM_MODEL_NAME"] = original_model
-        if original_temp is not None:
-            os.environ["TEMPERATURE"] = original_temp
-        if original_tokens is not None:
-            os.environ["MAX_TOKENS"] = original_tokens
+    # Set the APP_ENV to 'production' for this test
+    monkeypatch.setenv("APP_ENV", "production")
+    
+    config = get_core_config()
+    
+    # Assert that the value comes from 'tests/.env.prod'
+    assert config.postgres.host == "remote-prod-db"

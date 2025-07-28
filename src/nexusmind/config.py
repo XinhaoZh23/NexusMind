@@ -1,5 +1,6 @@
+from functools import lru_cache
 from pydantic import Field, validator
-from pydantic_settings import SettingsConfigDict
+from pydantic_settings import SettingsConfigDict, BaseSettings
 import os
 
 from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
@@ -10,7 +11,12 @@ class CoreConfig(BaseConfig):
     Core settings for the application, loaded from environment variables.
     """
 
-    model_config = SettingsConfigDict(extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        env_nested_delimiter="__",
+    )
 
     # --- LLM Configuration ---
     # The model name to use for language model interactions.
@@ -47,9 +53,9 @@ class CoreConfig(BaseConfig):
 
     api_keys: list[str] = []
 
-    postgres: PostgresConfig = PostgresConfig()
-    redis: RedisConfig = RedisConfig()
-    minio: MinioConfig | None = None
+    postgres: PostgresConfig = Field(default_factory=PostgresConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
+    minio: MinioConfig | None = Field(default=None)
 
     @validator("minio", pre=True, always=True)
     def validate_minio(cls, v, values):
@@ -58,8 +64,13 @@ class CoreConfig(BaseConfig):
         return None
 
 
+@lru_cache()
 def get_core_config() -> CoreConfig:
     """
     Get the core config, cached to avoid multiple loads.
+
+    This function now checks the APP_ENV environment variable to determine
+    which .env file to load.
     """
-    return CoreConfig()
+    env_file = ".env.prod" if os.getenv("APP_ENV") == "production" else ".env"
+    return CoreConfig(_env_file=env_file)
