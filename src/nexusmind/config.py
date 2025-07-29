@@ -66,34 +66,12 @@ class CoreConfig(BaseConfig):
 
 
 @lru_cache()
-def get_core_config(app_env: Optional[str] = None) -> CoreConfig:
+def get_core_config() -> CoreConfig:
     """
-    Get the core config.
-
-    This function is now a pure function whose output is determined by the
-    `app_env` parameter. It is cached with @lru_cache, which works correctly
-    because the cache key is now based on the input parameter.
-    """
-    env_file_name = ".env.prod" if app_env == "production" else ".env"
+    Get the core config, cached to avoid multiple loads.
     
-    # Correctly determine the project root, which is three levels up from this file
-    # (.../src/nexusmind/config.py -> .../src/nexusmind -> .../src -> PROJECT_ROOT)
-    project_root = os.path.dirname(
-        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    )
-
-    # For tests, the .env files are located in the 'tests' directory
-    # For regular execution, they are at the project root
-    tests_env_path = os.path.join(project_root, "tests", env_file_name)
-    root_env_path = os.path.join(project_root, env_file_name)
-
-    if os.path.exists(tests_env_path):
-        env_file_to_load = tests_env_path
-    elif os.path.exists(root_env_path):
-        env_file_to_load = root_env_path
-    else:
-        # If no .env file is found (e.g., in CI/CD), Pydantic will rely solely
-        # on environment variables, which is the desired behavior.
-        env_file_to_load = None
-
-    return CoreConfig(_env_file=env_file_to_load)
+    This function simply creates and returns a CoreConfig instance.
+    The loading of environment variables from .env files is handled
+    automatically by pydantic-settings.
+    """
+    return CoreConfig()

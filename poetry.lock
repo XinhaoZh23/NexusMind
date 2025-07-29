@@ -882,7 +882,7 @@ python-versions = ">=3.7"
 
 [[package]]
 name = "moto"
-version = "5.1.8"
+version = "5.1.9"
 description = "A library that allows you to easily mock out tests based on AWS infrastructure"
 category = "dev"
 optional = false
@@ -1167,6 +1167,18 @@ tomli = {version = ">=1.0.0", markers = "python_version < \"3.11\""}
 
 [package.extras]
 testing = ["argcomplete", "attrs (>=19.2.0)", "hypothesis (>=3.56)", "mock", "nose", "pygments (>=2.7.2)", "requests", "setuptools", "xmlschema"]
+
+[[package]]
+name = "pytest-dotenv"
+version = "0.5.2"
+description = "A py.test plugin that parses environment files before running tests"
+category = "dev"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+pytest = ">=5.0.0"
+python-dotenv = ">=0.9.1"
 
 [[package]]
 name = "python-dateutil"
@@ -1691,7 +1703,7 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.9"
-content-hash = "134271b61d2e36db067bcaceb0969bd5b24c85f3f7a1dc712f6b7f2fe97ea7bc"
+content-hash = "50499c2a4a7061b92bbf35cfb0fcba58bbbcb3263809fb85279b977b18f0af4c"
 
 [metadata.files]
 aiohappyeyeballs = []
@@ -1774,6 +1786,7 @@ pydantic-settings = []
 pyflakes = []
 pygments = []
 pytest = []
+pytest-dotenv = []
 python-dateutil = []
 python-dotenv = []
 python-multipart = []

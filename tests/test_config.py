@@ -2,25 +2,19 @@ import pytest
 from src.nexusmind.config import get_core_config
 
 
-# def test_loads_dev_env_by_default():
-#     """
-#     Verifies that when no environment is specified, the configuration is
-#     loaded from the default 'tests/.env' file.
-#     """
-#     # Explicitly call with app_env=None to simulate default behavior
-#     config = get_core_config(app_env=None)
-#     
-#     # Assert that the value comes from 'tests/.env'
-#     assert config.postgres.host == "localhost-dev"
-
-
-def test_loads_prod_env_when_app_env_is_production():
+def test_config_loads_from_test_env():
     """
-    Verifies that when 'production' is specified, the configuration is
-    loaded from the 'tests/.env.prod' file.
+    Verifies that the configuration is correctly loaded from the 'tests/.env'
+    file, which is specified in 'pytest.ini'.
     """
-    # Explicitly call with app_env="production"
-    config = get_core_config(app_env="production")
+    # Clear cache to ensure we get a fresh instance for this test module
+    get_core_config.cache_clear()
     
-    # Assert that the value comes from 'tests/.env.prod'
-    assert config.postgres.host == "remote-prod-db"
+    config = get_core_config()
+    
+    # Assert that a value from the root of the config is loaded
+    assert config.storage_base_path == "/tmp/test_storage"
+    
+    # Assert that a value for a nested model is loaded
+    assert config.postgres.host == "localhost-dev"
+    assert config.redis.host == "localhost-dev-redis"
