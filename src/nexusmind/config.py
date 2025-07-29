@@ -2,12 +2,9 @@ from functools import lru_cache
 from pydantic import Field, validator
 from pydantic_settings import SettingsConfigDict, BaseSettings
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
-
-# Module-level cache for CoreConfig instances
-_core_config_cache: Dict[str, "CoreConfig"] = {}
 
 
 class CoreConfig(BaseConfig):
@@ -68,18 +65,35 @@ class CoreConfig(BaseConfig):
         return None
 
 
-def get_core_config() -> CoreConfig:
+@lru_cache()
+def get_core_config(app_env: Optional[str] = None) -> CoreConfig:
     """
     Get the core config.
 
-    This function now checks the APP_ENV environment variable to determine
-    which .env file to load, and uses a manual, environment-aware cache
-    to avoid reloading configuration unnecessarily.
+    This function is now a pure function whose output is determined by the
+    `app_env` parameter. It is cached with @lru_cache, which works correctly
+    because the cache key is now based on the input parameter.
     """
-    env_file = ".env.prod" if os.getenv("APP_ENV") == "production" else ".env"
+    env_file_name = ".env.prod" if app_env == "production" else ".env"
+    
+    # Correctly determine the project root, which is three levels up from this file
+    # (.../src/nexusmind/config.py -> .../src/nexusmind -> .../src -> PROJECT_ROOT)
+    project_root = os.path.dirname(
+        os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    )
 
-    if env_file not in _core_config_cache:
-        config = CoreConfig(_env_file=env_file)
-        _core_config_cache[env_file] = config
+    # For tests, the .env files are located in the 'tests' directory
+    # For regular execution, they are at the project root
+    tests_env_path = os.path.join(project_root, "tests", env_file_name)
+    root_env_path = os.path.join(project_root, env_file_name)
 
-    return _core_config_cache[env_file]
+    if os.path.exists(tests_env_path):
+        env_file_to_load = tests_env_path
+    elif os.path.exists(root_env_path):
+        env_file_to_load = root_env_path
+    else:
+        # If no .env file is found (e.g., in CI/CD), Pydantic will rely solely
+        # on environment variables, which is the desired behavior.
+        env_file_to_load = None
+
+    return CoreConfig(_env_file=env_file_to_load)
