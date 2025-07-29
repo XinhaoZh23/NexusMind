@@ -1,13 +1,26 @@
 import os
+from unittest.mock import patch
 
 import pytest
-from pydantic import ValidationError
+from pydantic_core import ValidationError
 
-from nexusmind.config import CoreConfig
+from nexusmind.config import get_core_config
 
 # 在导入CoreConfig之后设置环境变量，以测试覆盖
 os.environ["LLM_MODEL_NAME"] = "test-model"
 os.environ["TEMPERATURE"] = "0.5"
+
+
+def test_initial_config_loading_fails_without_env():
+    """
+    Ensures that loading the configuration fails as expected
+    when no environment variables are provided.
+    This confirms that the configuration is not hard-coded
+    and relies on the environment.
+    """
+    with pytest.raises(ValidationError):
+        # get_core_config.cache_clear()  # This is no longer needed as there's no cache
+        get_core_config()
 
 
 def test_default_values():
@@ -20,7 +33,7 @@ def test_default_values():
     original_max_tokens = os.environ.pop("MAX_TOKENS", None)
 
     try:
-        config = CoreConfig()
+        config = get_core_config()
         # Unset MAX_TOKENS which was not set at the top level
         assert config.max_tokens == 1000
     finally:
@@ -37,7 +50,7 @@ def test_environment_variable_override():
     """
     Test that environment variables correctly override the default values.
     """
-    config = CoreConfig()
+    config = get_core_config()
     assert config.llm_model_name == "test-model"
     assert config.temperature == 0.5
 
@@ -48,7 +61,7 @@ def test_type_validation():
     """
     os.environ["MAX_TOKENS"] = "not-an-integer"
     with pytest.raises(ValidationError):
-        CoreConfig()
+        get_core_config()
     # Clean up the invalid environment variable
     del os.environ["MAX_TOKENS"]
 
@@ -64,7 +77,7 @@ def test_init_without_override():
     original_tokens = os.environ.pop("MAX_TOKENS", None)
 
     try:
-        config = CoreConfig()
+        config = get_core_config()
         assert config.llm_model_name == "gpt-4o"
         assert config.temperature == 0.7
         assert config.max_tokens == 1000
