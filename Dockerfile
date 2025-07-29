@@ -19,5 +19,8 @@ RUN poetry install --no-root
 # Copy the rest of the application code
 COPY . .
 
+# Expose the port the app runs on
+EXPOSE 8000
+
 # Command to run the application
-CMD ["poetry", "run", "uvicorn", "src.main:app", "--host", "0.0.0.0", "--port", "8000"] 
+CMD ["poetry", "run", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]

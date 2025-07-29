@@ -21,7 +21,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    command: poetry run celery -A src.nexusmind.celery_app worker --loglevel=info -Q brain_item_queue,file_processing_queue
+    command: poetry run celery -A nexusmind.celery_app worker --loglevel=info -Q brain_item_queue,file_processing_queue
     volumes:
       - ./storage:/app/storage
       - ./src:/app/src
