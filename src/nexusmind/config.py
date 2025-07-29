@@ -58,11 +58,11 @@ class CoreConfig(BaseConfig):
     redis: RedisConfig = Field(default_factory=RedisConfig)
     minio: MinioConfig | None = Field(default=None)
 
-    @validator("minio", pre=True, always=True)
-    def validate_minio(cls, v, values):
-        if os.getenv("MINIO_ENDPOINT"):
-            return MinioConfig()
-        return None
+    # The custom validator for 'minio' is no longer needed. Pydantic's
+    # built-in handling of `Optional` and default values is sufficient.
+    # The presence of `MINIO__ENDPOINT` and other `MINIO__*` variables
+    # in the environment will now correctly trigger the creation of the
+    # MinioConfig object, and its absence will correctly result in `None`.
 
 
 @lru_cache()
