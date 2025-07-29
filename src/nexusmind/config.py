@@ -54,11 +54,13 @@ class CoreConfig(BaseConfig):
     redis: RedisConfig = RedisConfig()
     minio: MinioConfig | None = None
 
-    @validator("minio", pre=True, always=True)
-    def validate_minio(cls, v, values):
-        if os.getenv("MINIO_ENDPOINT"):
-            return MinioConfig()
-        return None
+    # The following validator is deprecated and has been removed.
+    # Pydantic's modern built-in logic for `Optional` types handles this
+    # case automatically. If MINIO__* environment variables are present,
+    # MinioConfig will be created; otherwise, it will correctly be `None`.
+    # @validator("minio", pre=True, always=True)
+    # def check_minio_config(cls, v, values):
+    #     ...
 
 
 @lru_cache()
