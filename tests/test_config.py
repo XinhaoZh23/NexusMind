@@ -18,9 +18,12 @@ def test_initial_config_loading_fails_without_env():
     This confirms that the configuration is not hard-coded
     and relies on the environment.
     """
-    with pytest.raises(ValidationError):
-        # get_core_config.cache_clear()  # This is no longer needed as there's no cache
-        get_core_config()
+    # Use patch.dict to ensure a completely clean environment for this test
+    with patch.dict(os.environ, {}, clear=True):
+        with pytest.raises(ValidationError):
+            # We must clear the cache inside the patched context
+            get_core_config.cache_clear()
+            get_core_config()
 
 
 def test_default_values():
