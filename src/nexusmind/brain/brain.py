@@ -6,7 +6,7 @@ from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from nexusmind.files.file import File
+from nexusmind.files.file import NexusFile
 from nexusmind.llm.llm_endpoint import LLMEndpoint
 from nexusmind.logger import get_logger
 from nexusmind.storage.faiss_vector_store import FaissVectorStore
@@ -26,6 +26,7 @@ class Brain(BaseModel):
     brain_id: UUID = Field(default_factory=uuid4)
     name: str = "Default Brain"
     history: List[Dict[str, str]] = Field(default_factory=list)
+    files: List[NexusFile] = Field(default_factory=list)
 
     # Configuration fields
     llm_model_name: str = Field(...)
