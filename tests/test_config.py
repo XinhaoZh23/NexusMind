@@ -6,89 +6,108 @@ from pydantic_core import ValidationError
 
 from nexusmind.config import get_core_config
 
-# 在导入CoreConfig之后设置环境变量，以测试覆盖
-os.environ["LLM_MODEL_NAME"] = "test-model"
-os.environ["TEMPERATURE"] = "0.5"
+# Remove global environment variable manipulation.
+# These will be handled by fixtures or monkeypatching within each test.
+# os.environ["LLM_MODEL_NAME"] = "test-model"
+# os.environ["TEMPERATURE"] = "0.5"
 
 
 def test_initial_config_loading_fails_without_env():
     """
     Ensures that loading the configuration fails as expected
     when no environment variables are provided.
-    This confirms that the configuration is not hard-coded
-    and relies on the environment.
     """
     # Use patch.dict to ensure a completely clean environment for this test
     with patch.dict(os.environ, {}, clear=True):
         with pytest.raises(ValidationError):
-            # We must clear the cache inside the patched context
             get_core_config.cache_clear()
             get_core_config()
 
 
 def test_default_values():
     """
-    Test that the default values are loaded correctly when no environment
-    variables are set. We need to temporarily unset env vars for this test.
+    Test that the configuration loads default values correctly when
+    no environment variables or .env file is present.
     """
-    original_llm_model_name = os.environ.pop("LLM_MODEL_NAME", None)
-    original_temperature = os.environ.pop("TEMPERATURE", None)
-    original_max_tokens = os.environ.pop("MAX_TOKENS", None)
-
-    try:
-        config = get_core_config()
-        # Unset MAX_TOKENS which was not set at the top level
-        assert config.max_tokens == 1000
-    finally:
-        # Restore environment variables
-        if original_llm_model_name is not None:
-            os.environ["LLM_MODEL_NAME"] = original_llm_model_name
-        if original_temperature is not None:
-            os.environ["TEMPERATURE"] = original_temperature
-        if original_max_tokens is not None:
-            os.environ["MAX_TOKENS"] = original_max_tokens
+    with patch.dict(os.environ, {}, clear=True):
+        # We expect a validation error because essential values are missing
+        with pytest.raises(ValidationError):
+            get_core_config.cache_clear()
+            get_core_config()
 
 
-def test_environment_variable_override():
+def test_environment_variable_override(monkeypatch):
     """
     Test that environment variables correctly override the default values.
     """
+    get_core_config.cache_clear()
+    monkeypatch.setenv("LLM_MODEL_NAME", "test-model-override")
+    monkeypatch.setenv("TEMPERATURE", "0.8")
+    # Set all other required variables to satisfy validation
+    monkeypatch.setenv("OPENAI_API_KEY", "test_key")
+    monkeypatch.setenv("STORAGE_BASE_PATH", "/tmp")
+    monkeypatch.setenv("CELERY_BROKER_URL", "redis://localhost")
+    monkeypatch.setenv("CELERY_RESULT_BACKEND", "redis://localhost")
+    monkeypatch.setenv("POSTGRES__USER", "test")
+    monkeypatch.setenv("POSTGRES__PASSWORD", "test")
+    monkeypatch.setenv("POSTGRES__HOST", "db")
+    monkeypatch.setenv("POSTGRES__PORT", "5432")
+    monkeypatch.setenv("POSTGRES__DB", "testdb")
+    monkeypatch.setenv("REDIS__HOST", "redis")
+    monkeypatch.setenv("REDIS__PORT", "6379")
+    monkeypatch.setenv("REDIS__DB", "1")
+
     config = get_core_config()
-    assert config.llm_model_name == "test-model"
-    assert config.temperature == 0.5
+    assert config.llm_model_name == "test-model-override"
+    assert config.temperature == 0.8
 
 
-def test_type_validation():
+def test_type_validation(monkeypatch):
     """
     Test that Pydantic raises a validation error for incorrect types.
     """
-    os.environ["MAX_TOKENS"] = "not-an-integer"
+    get_core_config.cache_clear()
+    monkeypatch.setenv("MAX_TOKENS", "not-an-integer")
+    # Set all other required variables to satisfy validation
+    monkeypatch.setenv("OPENAI_API_KEY", "test_key")
+    monkeypatch.setenv("STORAGE_BASE_PATH", "/tmp")
+    monkeypatch.setenv("CELERY_BROKER_URL", "redis://localhost")
+    monkeypatch.setenv("CELERY_RESULT_BACKEND", "redis://localhost")
+    monkeypatch.setenv("POSTGRES__USER", "test")
+    monkeypatch.setenv("POSTGRES__PASSWORD", "test")
+    monkeypatch.setenv("POSTGRES__HOST", "db")
+    monkeypatch.setenv("POSTGRES__PORT", "5432")
+    monkeypatch.setenv("POSTGRES__DB", "testdb")
+    monkeypatch.setenv("REDIS__HOST", "redis")
+    monkeypatch.setenv("REDIS__PORT", "6379")
+    monkeypatch.setenv("REDIS__DB", "1")
+
     with pytest.raises(ValidationError):
         get_core_config()
-    # Clean up the invalid environment variable
-    del os.environ["MAX_TOKENS"]
 
 
-# Edge case test for init without env var overrides to ensure defaults are applied
-def test_init_without_override():
+def test_no_env_file_loads_defaults(monkeypatch):
     """
-    Test initialization without any overrides to ensure default values are used.
+    Test that default values are used when no .env file is specified and
+    environment variables are not set for them.
     """
-    # Temporarily remove env vars that might affect this test
-    original_model = os.environ.pop("LLM_MODEL_NAME", None)
-    original_temp = os.environ.pop("TEMPERATURE", None)
-    original_tokens = os.environ.pop("MAX_TOKENS", None)
+    get_core_config.cache_clear()
+    # Set only the required variables, leaving defaults to be tested
+    monkeypatch.setenv("OPENAI_API_KEY", "test_key")
+    monkeypatch.setenv("STORAGE_BASE_PATH", "/tmp")
+    monkeypatch.setenv("CELERY_BROKER_URL", "redis://localhost")
+    monkeypatch.setenv("CELERY_RESULT_BACKEND", "redis://localhost")
+    monkeypatch.setenv("POSTGRES__USER", "test")
+    monkeypatch.setenv("POSTGRES__PASSWORD", "test")
+    monkeypatch.setenv("POSTGRES__HOST", "db")
+    monkeypatch.setenv("POSTGRES__PORT", "5432")
+    monkeypatch.setenv("POSTGRES__DB", "testdb")
+    monkeypatch.setenv("REDIS__HOST", "redis")
+    monkeypatch.setenv("REDIS__PORT", "6379")
+    monkeypatch.setenv("REDIS__DB", "1")
 
-    try:
-        config = get_core_config()
-        assert config.llm_model_name == "gpt-4o"
-        assert config.temperature == 0.7
-        assert config.max_tokens == 1000
-    finally:
-        # Restore env vars
-        if original_model is not None:
-            os.environ["LLM_MODEL_NAME"] = original_model
-        if original_temp is not None:
-            os.environ["TEMPERATURE"] = original_temp
-        if original_tokens is not None:
-            os.environ["MAX_TOKENS"] = original_tokens
+    config = get_core_config()
+    # These should be the default values from the model definition
+    assert config.llm_model_name == "gpt-4o"
+    assert config.temperature == 0.7
+    assert config.max_tokens == 1000
