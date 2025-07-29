@@ -31,14 +31,11 @@ services:
       - nexusmind_network
 
   websocket-gateway:
-    build:
-      context: ./websocket_gateway
-      dockerfile: Dockerfile
-    environment:
-      - FASTAPI_URL=http://api-server:8000
-      - API_KEY=${API_KEY}
+    build: ./websocket_gateway
     ports:
       - "8001:8001"
+    env_file:
+      - .env
     networks:
       - nexusmind_network
 
