@@ -4,7 +4,7 @@ FROM python:3.10-slim
 # Set the working directory in the container
 WORKDIR /app
 
-# Set the PYTHONPATH environment variable
+# Set the PYTHONPATH environment variable to include the src directory
 ENV PYTHONPATH "${PYTHONPATH}:/app/src"
 
 # Install poetry
