@@ -1,8 +1,8 @@
 from functools import lru_cache
-from pydantic import Field, validator
-from pydantic_settings import SettingsConfigDict, BaseSettings
-import os
-from typing import Dict, Optional
+from typing import Dict, Optional  # noqa
+
+from pydantic import Field, validator  # noqa
+from pydantic_settings import BaseSettings, SettingsConfigDict  # noqa
 
 from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
 
@@ -69,7 +69,7 @@ class CoreConfig(BaseConfig):
 def get_core_config() -> CoreConfig:
     """
     Get the core config, cached to avoid multiple loads.
-    
+
     This function simply creates and returns a CoreConfig instance.
     The loading of environment variables from .env files is handled
     automatically by pydantic-settings.
