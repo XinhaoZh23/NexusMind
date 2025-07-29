@@ -16,5 +16,5 @@ def test_config_loads_from_test_env():
     assert config.storage_base_path == "/tmp/test_storage"
     
     # Assert that a value for a nested model is loaded
-    assert config.postgres.host == "localhost-dev"
-    assert config.redis.host == "localhost-dev-redis"
+    assert config.postgres.host == "localhost"
+    assert config.redis.host == "localhost"

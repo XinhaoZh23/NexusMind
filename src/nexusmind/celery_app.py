@@ -1,37 +1,28 @@
 from celery import Celery
-from celery.schedules import crontab
 
 from nexusmind.config import get_core_config
 
-# Use the centralized config function
+# Use the centralized config function to get a config instance
 config = get_core_config()
 
+# Initialize Celery directly with values from the config instance.
+# This ensures a single source of truth for configuration.
+app = Celery(
+    "nexusmind_tasks",
+    broker=config.celery_broker_url,
+    backend=config.celery_result_backend,
+    include=["nexusmind.tasks"],
+)
 
-class CeleryConfig:
-    # Construct Redis URL from the structured config
-    redis_url = (
-        f"redis://{config.redis.host}:{config.redis.port}/"
-        f"{config.redis.db}"
-    )
+# Optional: Update Celery configuration with more settings if needed
+app.conf.update(
+    task_track_started=True,
+)
 
-    # Initialize Celery
-    app = Celery(
-        "nexusmind_tasks",
-        broker=redis_url,
-        backend=redis_url,
-        include=["nexusmind.tasks"],
-    )
-
-    # Optional: Update Celery configuration with more settings if needed
-    app.conf.update(
-        task_track_started=True,
-    )
-
-    # Load celery config from Pydantic settings
-    # The namespace='CELERY' argument means all celery-related settings
-    # should be in uppercase and prefixed with `CELERY_` in your config file
-    # (e.g., CELERY_BROKER_URL, CELERY_RESULT_BACKEND).
-    app.config_from_object(CoreConfig(), namespace="CELERY")
+# The following is no longer needed and has been removed:
+# - A custom CeleryConfig class, which was an unnecessary wrapper.
+# - Manual construction of redis_url, as we now use the values from CoreConfig.
+# - The redundant and problematic app.config_from_object() call.
 
 if __name__ == "__main__":
     app.start()

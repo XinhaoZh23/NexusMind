@@ -32,8 +32,8 @@ def get_session():
 
 def create_db_and_tables():
     """
-    Utility function to create all tables defined by SQLModel metadata.
-    This is useful for initializing the database for the first time.
+    Creates the database and all tables defined in the SQLModel metadata.
+    This function is called on application startup.
     """
     logger.info("Creating database tables...")
     # This import is placed here to ensure all models are loaded
