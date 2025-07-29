@@ -1,4 +1,4 @@
-# Stage 1: Build the React application
+# Stage 1: Build the React application using Node.js
 FROM node:18-alpine AS build
 
 # Set the working directory
@@ -16,18 +16,7 @@ COPY . .
 # Build the application for production
 RUN npm run build
 
-# Add this line to list the contents of the build output directory
-# This helps in debugging and ensures the build artifacts are present.
-RUN ls -R /app/dist
-
-# Stage 2: Serve the application with Nginx
-FROM nginx:1.21-alpine
-
-# Copy the build output from the build stage to Nginx's web server directory
-COPY --from=build /app/dist /usr/share/nginx/html
-
-# Expose port 80
-EXPOSE 80
-
-# Start Nginx when the container launches
-CMD ["nginx", "-g", "daemon off;"] 
+# Stage 2: Create a minimal final image containing ONLY the build artifacts
+FROM alpine:latest
+WORKDIR /app
+COPY --from=build /app/dist . 
