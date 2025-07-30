@@ -21,6 +21,11 @@ jobs:
     - name: Install dependencies
       run: |
         poetry install
+    - name: Run Linters
+      run: |
+        poetry run flake8 .
+        poetry run black --check .
+        poetry run isort --check-only .
     - name: Run tests
       env:
         OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY_DUMMY }}

@@ -50,8 +50,8 @@ class CoreConfig(BaseConfig):
 
     api_keys: list[str] = []
 
-    postgres: PostgresConfig = PostgresConfig()
-    redis: RedisConfig = RedisConfig()
+    postgres: PostgresConfig = Field(default_factory=PostgresConfig)
+    redis: RedisConfig = Field(default_factory=RedisConfig)
     minio: MinioConfig | None = None
 
     # The following validator is deprecated and has been removed.
