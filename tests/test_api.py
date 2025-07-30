@@ -76,7 +76,7 @@ def client_fixture(session: Session, monkeypatch):
     app.dependency_overrides[get_session] = get_session_override
 
     # 5. Disable the problematic startup event for testing
-    monkeypatch.setattr("main.create_db_and_tables", lambda: None)
+    monkeypatch.setattr("main.on_startup", lambda: None)
 
     # 6. Set up mock S3 storage
     with mock_aws():
