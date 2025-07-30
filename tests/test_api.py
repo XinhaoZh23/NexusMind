@@ -139,7 +139,7 @@ def mock_embedding() -> list[float]:
 
 
 # --- E2E API Test ---
-@patch("nexusmind.tasks.get_core_config")
+@patch("nexusmind.database.get_core_config")
 @patch("nexusmind.tasks.setup_processor_registry")
 @patch("nexusmind.llm.llm_endpoint.litellm.completion")
 @patch("nexusmind.llm.llm_endpoint.litellm.embedding")
@@ -147,7 +147,7 @@ def test_async_upload_and_chat(
     mock_embedding_call,
     mock_completion_call,
     mock_setup_processor_registry,
-    mock_tasks_get_core_config,  # New mock for the task's config
+    mock_db_get_core_config,  # Renamed for clarity
     test_txt_content,
     mock_embedding,
     client,  # Use the new client fixture
@@ -162,7 +162,7 @@ def test_async_upload_and_chat(
     # This ensures the background task also uses a test-appropriate config
     # We can reuse the same config factory from the client fixture
     test_config_factory = client.app.dependency_overrides[get_core_config]
-    mock_tasks_get_core_config.return_value = test_config_factory()
+    mock_db_get_core_config.return_value = test_config_factory()
 
     # --- Mock S3 and Processor dependencies for the Celery task ---
     # The api_client fixture already handles mocking for the API context.
