@@ -55,7 +55,12 @@ def test_unauthorized_access(client: TestClient):
     Test that a request without a valid API key is rejected.
     """
     # Create a dummy brain for the test
-    brain = Brain(name="Test Brain for Unauthorized")
+    brain = Brain(
+        name="Test Brain for Unauthorized",
+        llm_model_name="test-model",
+        temperature=0.5,
+        max_tokens=100,
+    )
     brain.save()
 
     response = client.post(
@@ -77,7 +82,12 @@ def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
     mock_litellm_completion.return_value = mock_response
 
     # Create a dummy brain for the test
-    brain = Brain(name="Test Brain for Success")
+    brain = Brain(
+        name="Test Brain for Success",
+        llm_model_name="test-model",
+        temperature=0.5,
+        max_tokens=100,
+    )
     brain.save()
 
     # Test with a valid API key from the overridden config
