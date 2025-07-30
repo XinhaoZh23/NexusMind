@@ -97,6 +97,11 @@ jobs:
             ${{ secrets.DOCKER_USERNAME }}/nexusmind-websocket-gateway:${{ github.sha }}
             ${{ secrets.DOCKER_USERNAME }}/nexusmind-websocket-gateway:latest
 
+      - name: Network Connectivity Test
+        run: |
+          echo "Attempting to connect to ${{ secrets.SSH_HOST }} on port 22..."
+          nc -zv ${{ secrets.SSH_HOST }} 22
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         with:
