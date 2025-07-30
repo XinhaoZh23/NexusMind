@@ -5,10 +5,13 @@ import boto3
 import pytest
 from fastapi.testclient import TestClient
 from moto import mock_aws
+from pydantic import SecretStr
 from sqlmodel import Session, SQLModel, create_engine
 
 from main import app, get_core_config
+from nexusmind.base_config import MinioConfig
 from nexusmind.celery_app import app as celery_app
+from nexusmind.config import CoreConfig
 from nexusmind.database import get_session
 from nexusmind.processor.splitter import Chunk
 from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
@@ -59,32 +62,49 @@ def client_fixture(session: Session, monkeypatch):
     monkeypatch.delenv("POSTGRES_DB", raising=False)
     monkeypatch.delenv("POSTGRES_PORT", raising=False)
 
-    monkeypatch.setenv("REDIS_HOST", "localhost")
-    monkeypatch.setenv("REDIS_PORT", "6379")
-    monkeypatch.setenv("REDIS_DB", "1")
+    # Redis variables are not used in API tests, can be removed
+    monkeypatch.delenv("REDIS_HOST", raising=False)
+    monkeypatch.delenv("REDIS_PORT", raising=False)
+    monkeypatch.delenv("REDIS_DB", raising=False)
 
-    # 2. Force Celery to run tasks eagerly for synchronous testing
+    # 2. Define a dependency override for CoreConfig
+    def get_test_config():
+        return CoreConfig(
+            api_keys=[VALID_API_KEY],
+            minio=MinioConfig(
+                endpoint="http://localhost:9000",
+                access_key="minioadmin",
+                secret_key=SecretStr("minioadmin"),
+                bucket="test-bucket",
+            ),
+            postgres=None,  # Explicitly set to None for tests
+            redis=None,  # Explicitly set to None for tests
+        )
+
+    # 3. Force Celery to run tasks eagerly for synchronous testing
     celery_app.conf.update(
         task_always_eager=True,
         task_store_eager_result=True,
     )
 
-    # 3. Clear Pydantic's settings cache to force reload with monkeypatched values
-    get_core_config.cache_clear()
-
-    # 4. Apply the database session override
+    # 4. Apply dependency overrides
     app.dependency_overrides[get_session] = get_session_override
+    app.dependency_overrides[get_core_config] = get_test_config
 
-    # 5. Disable the problematic startup event for testing
-    monkeypatch.setattr("main.on_startup", lambda: None)
+    # 5. Clear any registered startup handlers for testing
+    app.router.on_startup.clear()
 
     # 6. Set up mock S3 storage
     with mock_aws():
+        # S3 client for the test setup itself
         s3_client = boto3.client("s3", region_name="us-east-1")
 
+        # Override the S3 storage dependency used by the application
         def get_mock_s3_storage():
-            config = get_core_config().minio
+            config = get_test_config().minio
+            # Ensure the bucket exists in the mock environment
             s3_client.create_bucket(Bucket=config.bucket)
+            # Inject the mock client
             return S3Storage(config=config, s3_client=s3_client)
 
         app.dependency_overrides[get_s3_storage] = get_mock_s3_storage
