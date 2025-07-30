@@ -47,7 +47,7 @@ def process_file(self, file_id: str, brain_id: str):
         f"for file_id: {file_id} and brain_id: {brain_id}"
     )
 
-    engine = get_engine()  # Call the factory to get the engine
+    engine = get_engine()  # No arguments, will use production config
     with Session(engine) as session:
         try:
             # 1. Fetch the file record from the database

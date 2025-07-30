@@ -1,26 +1,46 @@
-from functools import lru_cache
+from typing import Optional
 
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import create_engine
+from sqlalchemy.engine import Engine
 
 from .config import get_core_config
 from .logger import logger
 
+# Global variable to cache the production engine
+_engine: Optional[Engine] = None
 
-@lru_cache()
-def get_engine():
+
+def get_engine(db_url: Optional[str] = None, **kwargs) -> Engine:
     """
-    Creates and returns a new SQLAlchemy engine instance.
-    The `lru_cache` decorator ensures that the engine is created only once.
+    Returns a SQLAlchemy engine.
+
+    This function implements a singleton pattern for the production engine.
+    If db_url is provided (for testing), it creates a new engine every time.
+    If db_url is not provided, it returns a cached engine for production use.
+
+    :param db_url: The database URL to connect to.
+    :param kwargs: Additional arguments to pass to create_engine (e.g., poolclass).
+    :return: A SQLAlchemy Engine instance.
     """
-    logger.info("Creating new database engine...")
-    config = get_core_config()
-    try:
-        engine = create_engine(config.postgres.get_db_url(), echo=True)
-        logger.info("Database engine created successfully.")
-        return engine
-    except Exception as e:
-        logger.error(f"Failed to create database engine: {e}")
-        raise
+    global _engine
+
+    if db_url:
+        # For tests: create a new engine with the provided URL and kwargs.
+        logger.info(f"Creating new test engine for db_url: {db_url}")
+        return create_engine(db_url, echo=False, **kwargs)
+
+    # For production: use the cached engine if it exists.
+    if _engine is None:
+        logger.info("Creating new production database engine...")
+        try:
+            config = get_core_config()
+            production_db_url = config.postgres.get_db_url()
+            _engine = create_engine(production_db_url, echo=False)
+            logger.info("Production database engine created and cached.")
+        except Exception as e:
+            logger.error(f"Failed to create database engine: {e}", exc_info=True)
+            raise
+    return _engine
 
 
 def get_session():
