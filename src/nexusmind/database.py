@@ -1,21 +1,26 @@
-from sqlmodel import Session, create_engine
+from functools import lru_cache
 
-from .config import CoreConfig
+from sqlmodel import Session, SQLModel, create_engine
+
+from .config import get_core_config
 from .logger import logger
 
-# Load configuration
-config = CoreConfig()
 
-# Create the database engine
-# The 'echo=True' argument is useful for debugging as it logs all SQL statements.
-# It should probably be turned off in production.
-try:
-    engine = create_engine(config.postgres.get_db_url(), echo=True)
-    logger.info("Database engine created successfully.")
-except Exception as e:
-    logger.error(f"Failed to create database engine: {e}")
-    # Exit or handle gracefully if the database connection is critical at startup
-    raise
+@lru_cache()
+def get_engine():
+    """
+    Creates and returns a new SQLAlchemy engine instance.
+    The `lru_cache` decorator ensures that the engine is created only once.
+    """
+    logger.info("Creating new database engine...")
+    config = get_core_config()
+    try:
+        engine = create_engine(config.postgres.get_db_url(), echo=True)
+        logger.info("Database engine created successfully.")
+        return engine
+    except Exception as e:
+        logger.error(f"Failed to create database engine: {e}")
+        raise
 
 
 def get_session():
@@ -23,6 +28,7 @@ def get_session():
     Dependency provider for FastAPI to get a database session.
     It ensures that the session is always closed after the request is finished.
     """
+    engine = get_engine()
     with Session(engine) as session:
         try:
             yield session
@@ -36,10 +42,7 @@ def create_db_and_tables():
     This is useful for initializing the database for the first time.
     """
     logger.info("Creating database tables...")
-    # This import is placed here to ensure all models are loaded
-    # before we try to create the tables.
-    from sqlmodel import SQLModel
-
+    engine = get_engine()
     try:
         SQLModel.metadata.create_all(engine)
         logger.info("Database tables created successfully.")
