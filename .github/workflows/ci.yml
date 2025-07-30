@@ -96,3 +96,14 @@ jobs:
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/nexusmind-websocket-gateway:${{ github.sha }}
             ${{ secrets.DOCKER_USERNAME }}/nexusmind-websocket-gateway:latest
+
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/ubuntu/
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
