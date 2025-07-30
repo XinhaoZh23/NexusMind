@@ -51,8 +51,21 @@ def on_startup():
     # Ensure the S3 bucket exists by manually creating dependencies
     config = get_core_config()
 
-    # Conditionally initialize S3 client only if Minio is configured
-    if config.minio:
+    # Configure Celery app with settings from CoreConfig
+    redis_url = (
+        f"redis://{config.redis.redis_host}:{config.redis.redis_port}/"
+        f"{config.redis.redis_db}"
+    )
+    celery_app.conf.broker_url = redis_url
+    celery_app.conf.result_backend = redis_url
+    celery_app.conf.update(
+        task_track_started=True,
+    )
+    # Also load any other celery settings from the main config
+    celery_app.config_from_object(config, namespace="CELERY")
+
+
+    if config.minio: # noqa
         # Mirror the logic from get_s3_storage to correctly instantiate
         client_kwargs = {
             "aws_access_key_id": config.minio.access_key,
