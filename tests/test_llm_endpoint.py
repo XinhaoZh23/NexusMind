@@ -1,6 +1,7 @@
-from unittest.mock import MagicMock, patch
+import uuid
+from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastapi import HTTPException  # noqa
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel
@@ -30,20 +31,18 @@ def teardown_module(module):
 
 
 @patch("main.get_session")
-@patch("main.get_api_key")
+@patch("main.get_api_key", new_callable=AsyncMock)
 def test_unauthorized_access(mock_get_api_key, mock_get_session):
     """
     Test that a request with an invalid API key is correctly rejected.
     """
-    # 1. Setup Mocks
-    # !! 诊断性临时修改 !!
-    # 我们故意将 side_effect 设置为一个标准的 ValueError。
-    # 如果 FastAPI 依然返回 403 或 500 状态码，而不是让 ValueError 崩溃整个测试，
-    # 这就证明了我们的核心推论：FastAPI 正在捕获依赖注入阶段的所有异常。
-    mock_get_api_key.side_effect = ValueError("PROVOKED ERROR FOR DIAGNOSIS")
+    # 1. Setup Mocks for an async function
+    # The side_effect needs to be a callable that returns the exception
+    mock_get_api_key.side_effect = HTTPException(
+        status_code=401, detail="Invalid API Key"
+    )
 
-    # Even though it's an auth test,
-    # the session dependency still needs to be mocked
+    # Even though it's an auth test, the session dependency still needs to be mocked
     with Session(test_engine) as session:
         mock_get_session.return_value = session
 
@@ -65,26 +64,22 @@ def test_unauthorized_access(mock_get_api_key, mock_get_session):
             headers={"X-API-Key": "invalid-api-key"},
             json={"question": "Hello", "brain_id": str(brain.brain_id)},
         )
-
-        # !! 诊断性临时打印 !!
-        print(f"DIAGNOSIS - Status Code: {response.status_code}")
-        print(f"DIAGNOSIS - Response JSON: {response.json()}")
-
         assert response.status_code == 401
-    assert response.json()["detail"] == "Invalid API Key"
+        assert response.json()["detail"] == "Invalid API Key"
 
 
 @patch("litellm.completion")
 @patch("main.get_session")
-@patch("main.get_api_key")
+@patch("main.get_api_key", new_callable=AsyncMock)
 def test_chat_endpoint_success(
     mock_get_api_key, mock_get_session, mock_litellm_completion
-):  # noqa
+):
     """
     Test a successful chat interaction with all dependencies mocked.
     """
-    # 1. Setup Mocks
+    # 1. Setup Mocks for async and sync functions
     mock_get_api_key.return_value = VALID_LLM_API_KEY
+
     with Session(test_engine) as session:
         mock_get_session.return_value = session
 
