@@ -59,6 +59,7 @@ def test_unauthorized_access(client: TestClient):
         headers={"X-API-Key": "invalid-api-key"},
         json={"question": "Hello", "brain_id": str(uuid.uuid4())},
     )
+    print(f"--- [DEBUG] Unauthorized test response JSON: {response.json()} ---")
     assert response.status_code == 401
     assert "Invalid API Key" in response.text
 
@@ -79,6 +80,7 @@ def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
         json={"question": "Hello, world!", "brain_id": str(uuid.uuid4())},
     )
 
+    print(f"--- [DEBUG] Success test response JSON: {response.json()} ---")
     assert response.status_code == 200
     assert response.json()["response"] == "This is a test response."
     mock_litellm_completion.assert_called_once()
