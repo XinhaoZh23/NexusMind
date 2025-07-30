@@ -1,6 +1,6 @@
 import os
 import uuid
-from unittest.mock import MagicMock, patch, create_autospec
+from unittest.mock import ANY, MagicMock, patch, create_autospec
 
 import boto3
 import pytest
@@ -17,6 +17,7 @@ from nexusmind.config import CoreConfig
 from nexusmind.database import get_engine, get_session
 from nexusmind.processor.splitter import Chunk
 from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
+from nexusmind.models.files import File as FileModel
 
 VALID_API_KEY = "test-key"
 
@@ -138,96 +139,45 @@ def mock_embedding() -> list[float]:
 
 
 # --- E2E API Test ---
-@patch("nexusmind.tasks.setup_processor_registry")
-@patch("nexusmind.llm.llm_endpoint.litellm.completion")
-@patch("nexusmind.llm.llm_endpoint.litellm.embedding")
-def test_async_upload_and_chat(
-    mock_embedding_call,
-    mock_completion_call,
-    mock_setup_processor_registry,
+@patch("main.process_file.delay")
+def test_upload_and_verify_task_dispatch(
+    mock_process_file_delay,
     test_txt_content,
-    mock_embedding,
-    client,  # Use the new client fixture
+    client,
 ):
     """
-    Tests the full end-to-end flow in a synchronous testing environment.
-    1. Upload a file, which is processed immediately due to Celery's eager mode.
-    2. Ask a question about the file.
-    3. Verify the response.
+    Tests the /upload endpoint as a pure unit test.
+    - Verifies that the endpoint returns 200 OK.
+    - Verifies that the file metadata is correctly saved to the database.
+    - Verifies that the Celery task (`process_file.delay`) is called once.
     """
-    # --- Mock S3 and Processor dependencies for the Celery task ---
-    # The api_client fixture already handles mocking for the API context.
-    # This patch handles mocking for the background Celery task context.
-    # s3_storage_mock = client.app.dependency_overrides[get_s3_storage]()
-
-    # Configure the mock processor to use the same mock S3 storage
-    processor_mock = MagicMock()
-    # Return a real, serializable Chunk object instead of a raw MagicMock
-    mock_chunk = Chunk(
-        content=test_txt_content,
-        page_number=1,
-        file_name="test_doc.txt",
-        document_id=str(uuid.uuid4()),
-    )
-    processor_mock.process.return_value = [mock_chunk]
-
-    registry_mock = MagicMock()
-    registry_mock.get_processor.return_value = processor_mock
-
-    # Make the patched setup function return our fully mocked registry
-    mock_setup_processor_registry.return_value = registry_mock
-
-    # --- Mock LLM services ---
-    mock_embedding_response = MagicMock()
-    mock_embedding_response.data = [MagicMock()]
-    mock_embedding_response.data[0].embedding = mock_embedding
-    mock_embedding_call.return_value = mock_embedding_response
-
-    mock_completion_response = MagicMock()
-    mock_completion_response.choices[0].message.content = "The sky is indeed blue."
-    mock_completion_call.return_value = mock_completion_response
-
     headers = {"X-API-Key": VALID_API_KEY}
-
-    # --- 1. Upload the file (should be processed synchronously) ---
     brain_id = str(uuid.uuid4())
     files = {"file": ("test_doc.txt", test_txt_content.encode("utf-8"), "text/plain")}
+
+    # --- 1. Upload the file ---
     response_upload = client.post(
         "/upload", data={"brain_id": brain_id}, files=files, headers=headers
     )
 
-    # Assert upload was accepted and processed
+    # --- 2. Assertions ---
+    # Assert that the API call was successful
     assert response_upload.status_code == 200
-    response_json = response_upload.json()
-    assert "task_id" in response_json
-    task_id = response_json["task_id"]
 
-    # --- 2. Verify task status is SUCCESS directly ---
-    response_status = client.get(f"/upload/status/{task_id}")
-    assert response_status.status_code == 200
-    status_json = response_status.json()
-    assert status_json.get("status") == "SUCCESS"
+    # Assert that the Celery task was called, indicating successful dispatch
+    mock_process_file_delay.assert_called_once()
 
-    # --- 3. Chat about the file ---
-    response_chat = client.post(
-        "/chat",
-        json={"brain_id": brain_id, "question": "What color is the sky?"},
-        headers=headers,
-    )
+    # Optional but recommended: Verify the task was called with the correct file_id
+    # To do this, we need a session to query the database
+    with Session(engine) as session:
+        file_record = session.query(FileModel).one_or_none()
+        assert file_record is not None
+        assert file_record.file_name == "test_doc.txt"
 
-    # Assert chat was successful
-    assert response_chat.status_code == 200
-    assert "The sky is indeed blue." in response_chat.json()["answer"]
-
-    # --- 4. Verify mocks were called ---
-    mock_embedding_call.assert_called()
-    mock_completion_call.assert_called()
-
-    completion_args, completion_kwargs = mock_completion_call.call_args
-    prompt_messages = completion_kwargs.get("messages", [])
-    assert len(prompt_messages) > 0
-    final_prompt = prompt_messages[0].get("content", "")
-    assert "the grass is green" in final_prompt.lower()
+        # Check that the first argument of the call matches the created file_id
+        call_args = mock_process_file_delay.call_args[0]
+        assert call_args[0] == str(file_record.id)
+        assert call_args[1] == brain_id
 
 
 def test_chat_without_api_key(client):

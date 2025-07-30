@@ -38,7 +38,7 @@ def get_engine(db_url: Optional[str] = None, **kwargs) -> Engine:
             _engine = create_engine(production_db_url, echo=False)
             logger.info("Production database engine created and cached.")
         except Exception as e:
-            logger.error("Failed to create database engine: {}", e, exc_info=True)
+            logger.error(f"Failed to create database engine: {e}", exc_info=True)
             raise
     return _engine
 
