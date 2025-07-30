@@ -1,7 +1,7 @@
 from typing import Optional
 
-from sqlmodel import create_engine, Session, SQLModel
 from sqlalchemy.engine import Engine
+from sqlmodel import Session, SQLModel, create_engine
 
 from .config import get_core_config
 from .logger import logger
