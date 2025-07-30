@@ -7,6 +7,7 @@ from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel
 
 from main import app, get_api_key
+from nexusmind.brain.brain import Brain
 from nexusmind.database import get_engine, get_session
 
 VALID_LLM_API_KEY = "test-llm-api-key"
@@ -54,12 +55,15 @@ def test_unauthorized_access(client: TestClient):
     """
     Test that a request without a valid API key is rejected.
     """
+    # Create a dummy brain for the test
+    brain = Brain(name="Test Brain for Unauthorized")
+    brain.save()
+
     response = client.post(
         "/chat",
         headers={"X-API-Key": "invalid-api-key"},
-        json={"question": "Hello", "brain_id": str(uuid.uuid4())},
+        json={"question": "Hello", "brain_id": str(brain.brain_id)},
     )
-    print(f"--- [DEBUG] Unauthorized test response JSON: {response.json()} ---")
     assert response.status_code == 401
     assert "Invalid API Key" in response.text
 
@@ -73,14 +77,17 @@ def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
     mock_response.choices[0].message.content = "This is a test response."
     mock_litellm_completion.return_value = mock_response
 
+    # Create a dummy brain for the test
+    brain = Brain(name="Test Brain for Success")
+    brain.save()
+
     # Test with a valid API key from the overridden config
     response = client.post(
         "/chat",
         headers={"X-API-Key": VALID_LLM_API_KEY},
-        json={"question": "Hello, world!", "brain_id": str(uuid.uuid4())},
+        json={"question": "Hello, world!", "brain_id": str(brain.brain_id)},
     )
 
-    print(f"--- [DEBUG] Success test response JSON: {response.json()} ---")
     assert response.status_code == 200
     assert response.json()["response"] == "This is a test response."
     mock_litellm_completion.assert_called_once()
