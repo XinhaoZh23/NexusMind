@@ -1,32 +1,33 @@
 from unittest.mock import MagicMock, patch
 
-import pytest  # noqa
+import pytest
 from fastapi.testclient import TestClient
 
 from main import app
 from nexusmind.config import CoreConfig, get_core_config
 
-# This client will be used for endpoint tests
-client = TestClient(app)
-
 
 def get_test_llm_config():
     """Returns a CoreConfig instance for testing the LLM endpoint."""
-    # The `mock_env` fixture in conftest ensures all necessary env vars are set.
-    # Therefore, we can now instantiate CoreConfig directly without special
-    # parameters like `_env_file=None`.
     return CoreConfig(llm_model_name="test-model", temperature=0.5, max_tokens=150)
 
 
-# Override the dependency for the duration of the tests in this module
-app.dependency_overrides[get_core_config] = get_test_llm_config
+@pytest.fixture
+def client():
+    """
+    Pytest fixture to provide a TestClient with dependency overrides.
+    This ensures that each test gets a client with the correct configuration
+    for the LLM endpoint tests.
+    """
+    app.dependency_overrides[get_core_config] = get_test_llm_config
+    yield TestClient(app)
+    # Clean up the dependency overrides after the test
+    app.dependency_overrides.clear()
 
 
-def test_unauthorized_access():
+def test_unauthorized_access(client: TestClient):
     """
     Test that a request without a valid API key is rejected.
-    The `mock_env` fixture provides a default set of keys, so we test against
-    a key that is not in that set.
     """
     response = client.post(
         "/chat",
@@ -38,7 +39,7 @@ def test_unauthorized_access():
 
 
 @patch("litellm.completion")
-def test_chat_endpoint_success(mock_litellm_completion):
+def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
     """Test the /chat endpoint for a successful interaction."""
     # Mock the response from litellm
     mock_response = MagicMock()
@@ -46,7 +47,7 @@ def test_chat_endpoint_success(mock_litellm_completion):
     mock_response.choices[0].message.content = "This is a test response."
     mock_litellm_completion.return_value = mock_response
 
-    # Test with a valid API key, which is now set by the conftest.py mock_env
+    # Test with a valid API key from the overridden config
     api_key = get_test_llm_config().api_keys[0]
     response = client.post(
         "/chat",

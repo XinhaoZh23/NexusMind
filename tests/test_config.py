@@ -42,7 +42,7 @@ def test_core_config_missing_required_field_fails(monkeypatch):
     # Pydantic v2 provides structured errors. We check for the specific error.
     errors = exc_info.value.errors()
     assert len(errors) > 0
-    # The error we care about is nested, so we check the location.
-    assert "postgres" in errors[0]["loc"]
-    assert "user" in errors[0]["loc"]
+    # Check that the error is for the 'user' field within PostgresConfig
+    assert "PostgresConfig" in str(exc_info.value)
+    assert errors[0]["loc"] == ("user",)
     assert errors[0]["type"] == "missing"
