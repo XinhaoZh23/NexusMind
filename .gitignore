@@ -81,3 +81,5 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+nexusmind_project.tar.gz

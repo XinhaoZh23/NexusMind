@@ -2,29 +2,28 @@
 FROM node:18-alpine AS build
 
 # Set the working directory
-WORKDIR /app
+WORKDIR /app/frontend
 
-# Copy package.json and package-lock.json
-COPY package*.json ./
+# Copy package.json and package-lock.json from the frontend directory
+COPY frontend/package*.json ./
 
 # Install dependencies
 RUN npm install
 
-# Copy the rest of the application source code
-COPY . .
+# Copy the rest of the frontend application source code
+COPY frontend/ .
 
 # Build the application for production
 RUN npm run build
 
-# Add this line to list the contents of the build output directory
-# This helps in debugging and ensures the build artifacts are present.
-RUN ls -R /app/dist
-
 # Stage 2: Serve the application with Nginx
-FROM nginx:1.21-alpine
+FROM nginx:latest
+
+# Copy the custom Nginx configuration
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
 
 # Copy the build output from the build stage to Nginx's web server directory
-COPY --from=build /app/dist /usr/share/nginx/html
+COPY --from=build /app/frontend/dist /usr/share/nginx/html
 
 # Expose port 80
 EXPOSE 80

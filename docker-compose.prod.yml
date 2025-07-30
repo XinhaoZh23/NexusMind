@@ -1,0 +1,60 @@
+version: '3.8'
+
+services:
+  api-server:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./storage:/app/storage
+      - ./src:/app/src
+      - ./alembic:/app/alembic
+      - ./alembic.ini:/app/alembic.ini
+    env_file:
+      - .env
+    networks:
+      - nexusmind_network
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: poetry run celery -A nexusmind.celery_app worker --loglevel=info -Q brain_item_queue,file_processing_queue
+    volumes:
+      - ./storage:/app/storage
+      - ./src:/app/src
+    env_file:
+      - .env
+    networks:
+      - nexusmind_network
+
+  websocket-gateway:
+    build:
+      context: ./websocket_gateway
+      dockerfile: Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - FASTAPI_URL=http://api-server:8000
+    env_file:
+      - .env.prod
+    networks:
+      - nexusmind_network
+
+  nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - api-server
+      - websocket-gateway
+    networks:
+      - nexusmind_network
+
+networks:
+  nexusmind_network:
+    driver: bridge 

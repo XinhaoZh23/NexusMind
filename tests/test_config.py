@@ -1,19 +1,48 @@
-from src.nexusmind.config import get_core_config
+import os  # noqa
+from unittest.mock import patch  # noqa
+
+import pytest
+from pydantic_core import ValidationError
+
+from nexusmind.config import CoreConfig
+
+# Remove global environment variable manipulation.
+# These will be handled by fixtures or monkeypatching within each test.
+# os.environ["LLM_MODEL_NAME"] = "test-model"
+# os.environ["TEMPERATURE"] = "0.5"
 
 
-def test_config_loads_from_test_env():
+def test_core_config_loads_from_env():
     """
-    Verifies that the configuration is correctly loaded from the 'tests/.env'
-    file, which is specified in 'pytest.ini'.
+    Tests if the CoreConfig successfully loads settings from the environment.
+    This relies on the `mock_env` fixture in conftest.py to set the variables.
     """
-    # Clear cache to ensure we get a fresh instance for this test module
-    get_core_config.cache_clear()
+    config = CoreConfig()
 
-    config = get_core_config()
+    assert config.llm_model_name == "gpt-4o"  # Default value
+    assert config.openai_api_key == "test_openai_api_key"
+    assert config.postgres.user == "testuser"
+    assert config.postgres.password.get_secret_value() == "testpassword"
+    assert config.redis.redis_host == "localhost"
+    assert config.redis.redis_db == 1
+    assert config.minio.access_key == "testminiouser"
+    assert config.minio.secret_key.get_secret_value() == "testminiopassword"
 
-    # Assert that a value from the root of the config is loaded
-    assert config.storage_base_path == "/tmp/test_storage"
 
-    # Assert that a value for a nested model is loaded
-    assert config.postgres.host == "localhost"
-    assert config.redis.host == "localhost"
+def test_core_config_missing_required_field_fails(monkeypatch):
+    """
+    Tests that validation fails if a required field is missing.
+    We explicitly remove a required variable to test this.
+    """
+    monkeypatch.delenv("POSTGRES_USER")
+
+    with pytest.raises(ValidationError) as exc_info:
+        CoreConfig()
+
+    # Pydantic v2 provides structured errors. We check for the specific error.
+    errors = exc_info.value.errors()
+    assert len(errors) > 0
+    # Check that the error is for the 'user' field within PostgresConfig
+    assert "PostgresConfig" in str(exc_info.value)
+    assert errors[0]["loc"] == ("user",)
+    assert errors[0]["type"] == "missing"

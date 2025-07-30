@@ -6,7 +6,7 @@ from sqlmodel import Session, select
 from .brain.brain import Brain
 from .celery_app import app
 from .config import get_core_config
-from .database import engine
+from .database import get_engine
 from .files.file import NexusFile
 from .logger import logger
 from .models.files import File, FileStatusEnum
@@ -47,6 +47,7 @@ def process_file(self, file_id: str, brain_id: str):
         f"for file_id: {file_id} and brain_id: {brain_id}"
     )
 
+    engine = get_engine()  # No arguments, will use production config
     with Session(engine) as session:
         try:
             # 1. Fetch the file record from the database

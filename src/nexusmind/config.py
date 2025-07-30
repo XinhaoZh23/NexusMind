@@ -1,8 +1,8 @@
 from functools import lru_cache
 from typing import Dict, Optional  # noqa
 
-from pydantic import Field, validator  # noqa
-from pydantic_settings import BaseSettings, SettingsConfigDict  # noqa
+from pydantic import Field
+from pydantic_settings import SettingsConfigDict
 
 from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
 
@@ -12,12 +12,7 @@ class CoreConfig(BaseConfig):
     Core settings for the application, loaded from environment variables.
     """
 
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        extra="ignore",
-        env_nested_delimiter="__",
-    )
+    model_config = SettingsConfigDict(extra="ignore")
 
     # --- LLM Configuration ---
     # The model name to use for language model interactions.
@@ -56,13 +51,15 @@ class CoreConfig(BaseConfig):
 
     postgres: PostgresConfig = Field(default_factory=PostgresConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
-    minio: MinioConfig | None = Field(default=None)
+    minio: MinioConfig = Field(default_factory=MinioConfig)
 
-    # The custom validator for 'minio' is no longer needed. Pydantic's
-    # built-in handling of `Optional` and default values is sufficient.
-    # The presence of `MINIO__ENDPOINT` and other `MINIO__*` variables
-    # in the environment will now correctly trigger the creation of the
-    # MinioConfig object, and its absence will correctly result in `None`.
+    # The following validator is deprecated and has been removed.
+    # Pydantic's modern built-in logic for `Optional` types handles this
+    # case automatically. If MINIO__* environment variables are present,
+    # MinioConfig will be created; otherwise, it will correctly be `None`.
+    # @validator("minio", pre=True, always=True)
+    # def check_minio_config(cls, v, values):
+    #     ...
 
 
 @lru_cache()

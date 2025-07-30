@@ -1,12 +1,15 @@
-import uuid
+from __future__ import annotations
+
 from typing import Dict, List, Optional
+from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from ..llm.llm_endpoint import LLMEndpoint
-from ..logger import get_logger
-from ..storage.faiss_vector_store import FaissVectorStore
-from ..storage.vector_store_base import VectorStoreBase
+from nexusmind.files.file import NexusFile
+from nexusmind.llm.llm_endpoint import LLMEndpoint
+from nexusmind.logger import get_logger
+from nexusmind.storage.faiss_vector_store import FaissVectorStore
+from nexusmind.storage.vector_store_base import VectorStoreBase
 
 logger = get_logger(__name__)
 
@@ -19,9 +22,10 @@ class Brain(BaseModel):
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    brain_id: uuid.UUID = Field(default_factory=uuid.uuid4)
+    brain_id: UUID = Field(default_factory=uuid4)
     name: str = "Default Brain"
     history: List[Dict[str, str]] = Field(default_factory=list)
+    files: List[NexusFile] = Field(default_factory=list)
 
     # Configuration fields
     llm_model_name: str = Field(...)
@@ -61,7 +65,7 @@ class Brain(BaseModel):
         serialization.save_brain(self)
 
     @classmethod
-    def load(cls, brain_id: uuid.UUID) -> "Brain":
+    def load(cls, brain_id: UUID) -> "Brain":
         """Loads a brain's state."""
         logger.info(f"Loading brain state for brain_id: {brain_id}")
         from . import serialization
