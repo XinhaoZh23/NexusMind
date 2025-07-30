@@ -1,6 +1,6 @@
 import os
 import uuid
-from unittest.mock import ANY, MagicMock, patch, create_autospec
+from unittest.mock import ANY, MagicMock, create_autospec, patch  # noqa
 
 import boto3
 import pytest
@@ -8,16 +8,16 @@ from fastapi.testclient import TestClient
 from moto import mock_aws
 from pydantic import SecretStr
 from sqlalchemy.pool import StaticPool
-from sqlmodel import Session, SQLModel, create_engine
+from sqlmodel import Session, SQLModel
 
 from main import app, get_core_config
 from nexusmind.base_config import MinioConfig, PostgresConfig, RedisConfig
 from nexusmind.celery_app import app as celery_app
 from nexusmind.config import CoreConfig
 from nexusmind.database import get_engine, get_session
-from nexusmind.processor.splitter import Chunk
-from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
 from nexusmind.models.files import File as FileModel
+from nexusmind.processor.splitter import Chunk  # noqa
+from nexusmind.storage.s3_storage import S3Storage, get_s3_storage
 
 VALID_API_KEY = "test-key"
 

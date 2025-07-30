@@ -1,9 +1,8 @@
 from functools import lru_cache
 from typing import Dict, Optional  # noqa
 
-from pydantic import Field, validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
-import os
+from pydantic import Field
+from pydantic_settings import SettingsConfigDict
 
 from .base_config import BaseConfig, MinioConfig, PostgresConfig, RedisConfig
 

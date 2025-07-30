@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlmodel import create_engine
+from sqlmodel import create_engine, Session, SQLModel
 from sqlalchemy.engine import Engine
 
 from .config import get_core_config

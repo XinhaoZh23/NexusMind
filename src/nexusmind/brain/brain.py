@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import os
-from typing import List, Optional, Dict
+from typing import Dict, List, Optional
 from uuid import UUID, uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
