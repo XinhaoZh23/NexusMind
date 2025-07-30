@@ -1,6 +1,6 @@
 import os
 import uuid
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, create_autospec
 
 import boto3
 import pytest
@@ -10,7 +10,7 @@ from pydantic import SecretStr
 from sqlmodel import Session, SQLModel, create_engine
 
 from main import app, get_core_config
-from nexusmind.base_config import MinioConfig
+from nexusmind.base_config import MinioConfig, PostgresConfig, RedisConfig
 from nexusmind.celery_app import app as celery_app
 from nexusmind.config import CoreConfig
 from nexusmind.database import get_session
@@ -80,8 +80,8 @@ def client_fixture(session: Session, monkeypatch):
                 endpoint=f"http://localhost:{os.getenv('S3_PORT')}",
                 bucket=os.getenv("S3_BUCKET_NAME"),
             ),
-            postgres=MagicMock(),
-            redis=MagicMock(),
+            postgres=create_autospec(PostgresConfig, instance=True),
+            redis=create_autospec(RedisConfig, instance=True),
         )
 
     # 3. Force Celery to run tasks eagerly for synchronous testing
