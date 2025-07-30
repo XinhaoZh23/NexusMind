@@ -1,4 +1,3 @@
-from functools import lru_cache
 from threading import Lock
 from typing import Generator, Optional
 
@@ -22,7 +21,8 @@ def get_engine(db_url: str | None = None, **kwargs) -> Engine:
 
     Args:
         db_url: The database URL to connect to. If provided, creates a new engine.
-        **kwargs: Additional arguments to pass to create_engine (e.g., connect_args, poolclass).
+        **kwargs: Additional arguments to pass to create_engine
+        (e.g., connect_args, poolclass).
 
     Returns:
         A SQLAlchemy Engine instance.
