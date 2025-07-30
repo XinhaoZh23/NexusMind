@@ -64,8 +64,7 @@ def on_startup():
     # Also load any other celery settings from the main config
     celery_app.config_from_object(config, namespace="CELERY")
 
-
-    if config.minio: # noqa
+    if config.minio:  # noqa
         # Mirror the logic from get_s3_storage to correctly instantiate
         client_kwargs = {
             "aws_access_key_id": config.minio.access_key,
