@@ -1,103 +1,64 @@
-from unittest.mock import Mock, patch
+from unittest.mock import MagicMock, patch
 
-import pytest
+import pytest  # noqa
+from fastapi.testclient import TestClient
 
-from nexusmind.config import CoreConfig
-from nexusmind.llm.llm_endpoint import LLMEndpoint
+from main import app
+from nexusmind.config import CoreConfig, get_core_config
 
-
-@pytest.fixture
-def core_config():
-    """Pytest fixture for a CoreConfig instance."""
-    return CoreConfig(
-        llm_model_name="test-model",
-        temperature=0.5,
-        max_tokens=100,
-        _env_file=None,  # Disable loading from environment
-    )
+# This client will be used for endpoint tests
+client = TestClient(app)
 
 
-@patch("litellm.completion")
-def test_get_chat_completion(mock_completion, core_config):
+def get_test_llm_config():
+    """Returns a CoreConfig instance for testing the LLM endpoint."""
+    # The `mock_env` fixture in conftest ensures all necessary env vars are set.
+    # Therefore, we can now instantiate CoreConfig directly without special
+    # parameters like `_env_file=None`.
+    return CoreConfig(llm_model_name="test-model", temperature=0.5, max_tokens=150)
+
+
+# Override the dependency for the duration of the tests in this module
+app.dependency_overrides[get_core_config] = get_test_llm_config
+
+
+def test_unauthorized_access():
     """
-    Test the get_chat_completion method with a mocked litellm.completion call.
+    Test that a request without a valid API key is rejected.
+    The `mock_env` fixture provides a default set of keys, so we test against
+    a key that is not in that set.
     """
-    # Arrange
-    message_mock = Mock()
-    message_mock.content = "This is a test response."
-    choice_mock = Mock()
-    choice_mock.message = message_mock
-    mock_response = Mock()
-    mock_response.choices = [choice_mock]
-    mock_completion.return_value = mock_response
+    response = client.post(
+        "/chat",
+        headers={"Authorization": "Bearer invalid-api-key"},
+        json={"text": "Hello"},
+    )
+    assert response.status_code == 401
+    assert "Invalid API Key" in response.text
 
-    llm_endpoint = LLMEndpoint(
-        model_name=core_config.llm_model_name,
-        temperature=core_config.temperature,
-        max_tokens=core_config.max_tokens,
+
+@patch("main.litellm.completion")
+def test_chat_endpoint_success(mock_litellm_completion):
+    """Test the /chat endpoint for a successful interaction."""
+    # Mock the response from litellm
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "This is a test response."
+    mock_litellm_completion.return_value = mock_response
+
+    # Test with a valid API key, which is now set by the conftest.py mock_env
+    api_key = get_test_llm_config().api_keys[0]
+    response = client.post(
+        "/chat",
+        headers={"Authorization": f"Bearer {api_key}"},
+        json={"text": "Hello, world!"},
     )
 
-    # Act
-    response = llm_endpoint.get_chat_completion(
-        messages=[{"role": "user", "content": "Hello"}]
-    )
-
-    # Assert
-    mock_completion.assert_called_once_with(
-        model="test-model",
-        messages=[{"role": "user", "content": "Hello"}],
-        temperature=0.5,
-        max_tokens=100,
-    )
-    assert response == "This is a test response."
-
-
-@patch("litellm.embedding")
-def test_get_embedding(mock_embedding, core_config):
-    """
-    Test the get_embedding method with a mocked litellm.embedding call.
-    """
-    # Arrange
-    # The response from litellm.embedding is dict-like, so we mock it as a dict.
-    mock_response = {"data": [{"embedding": [0.1, 0.2, 0.3]}]}
-    mock_embedding.return_value = mock_response
-
-    llm_endpoint = LLMEndpoint(
-        model_name=core_config.llm_model_name,
-        temperature=core_config.temperature,
-        max_tokens=core_config.max_tokens,
-    )
-
-    # Act
-    embedding = llm_endpoint.get_embedding("test text")
-
-    # Assert
-    mock_embedding.assert_called_once_with(
-        model="text-embedding-ada-002", input=["test text"]
-    )
-    assert embedding == [0.1, 0.2, 0.3]
-
-
-@patch("litellm.completion", side_effect=Exception("API Error"))
-def test_get_chat_completion_error_handling(mock_completion, core_config):
-    """
-    Test that get_chat_completion handles exceptions gracefully.
-    """
-    # Arrange
-    llm_endpoint = LLMEndpoint(
-        model_name=core_config.llm_model_name,
-        temperature=core_config.temperature,
-        max_tokens=core_config.max_tokens,
-    )
-
-    # Act
-    response = llm_endpoint.get_chat_completion(
-        messages=[{"role": "user", "content": "Hello"}]
-    )
-
-    # Assert
-    assert response == ""
-
-
-def test_llm_endpoint_initialization():
-    """Tests the initialization of the LLMEndpoint."""
+    assert response.status_code == 200
+    assert response.json()["response"] == "This is a test response."
+    mock_litellm_completion.assert_called_once()
+    call_args, call_kwargs = mock_litellm_completion.call_args
+    assert call_kwargs["model"] == "test-model"
+    assert call_kwargs["messages"] == [{"role": "user", "content": "Hello, world!"}]
+    assert call_kwargs["temperature"] == 0.5
+    assert call_kwargs["max_tokens"] == 150

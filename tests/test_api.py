@@ -1,4 +1,4 @@
-import os
+import os  # noqa
 import uuid
 from unittest.mock import ANY, MagicMock, create_autospec, patch  # noqa
 
@@ -6,12 +6,12 @@ import boto3
 import pytest
 from fastapi.testclient import TestClient
 from moto import mock_aws
-from pydantic import SecretStr
+from pydantic import SecretStr  # noqa
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel
 
 from main import app, get_core_config
-from nexusmind.base_config import MinioConfig, PostgresConfig, RedisConfig
+from nexusmind.base_config import MinioConfig, PostgresConfig, RedisConfig  # noqa
 from nexusmind.celery_app import app as celery_app
 from nexusmind.config import CoreConfig
 from nexusmind.database import get_engine, get_session
@@ -73,20 +73,17 @@ def client_fixture(session: Session, monkeypatch: pytest.MonkeyPatch):
 
     # 2. Define a dependency override for CoreConfig
     def get_test_config():
-        # Create a mock CoreConfig, providing mocks for the database and redis
-        # configurations that we don't want to instantiate.
+        """
+        Returns a CoreConfig instance suitable for testing API endpoints.
+        This relies on the `mock_env` fixture in `conftest.py` for base environment
+        settings but creates type-safe mocks for database and Redis configs
+        to ensure full isolation during API tests.
+        """
         return CoreConfig(
             api_keys=[VALID_API_KEY],
-            minio=MinioConfig(
-                access_key="minioadmin",
-                secret_key=SecretStr("minioadmin"),
-                endpoint=f"http://localhost:{os.getenv('S3_PORT')}",
-                bucket=os.getenv("S3_BUCKET_NAME"),
-                _env_file=None,  # Disable loading from environment
-            ),
             postgres=create_autospec(PostgresConfig, instance=True),
             redis=create_autospec(RedisConfig, instance=True),
-            _env_file=None,  # Disable loading from environment
+            # minio is now correctly loaded from the mocked env in conftest
         )
 
     # 3. Force Celery to run tasks eagerly for synchronous testing
