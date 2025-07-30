@@ -2,8 +2,8 @@ from functools import lru_cache
 from threading import Lock
 from typing import Generator, Optional
 
-from sqlalchemy.engine import Engine
 from pydantic_core import ValidationError
+from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
 
 from .config import get_core_config
