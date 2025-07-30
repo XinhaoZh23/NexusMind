@@ -25,25 +25,25 @@ def client():
     API key security dependency and database session dependency.
     This ensures complete isolation for testing protected endpoints.
     """
-        # Create tables in the test database
+    # Create tables in the test database
     SQLModel.metadata.create_all(test_engine)
-    
+
     # Create a session for the test
     test_session = Session(test_engine)
-    
+
     def get_test_session():
         """Override for get_session dependency to use test database."""
         return test_session
-    
+
     # Override both the API key and database session dependencies
     app.dependency_overrides[get_api_key] = lambda: VALID_LLM_API_KEY
     app.dependency_overrides[get_session] = get_test_session
 
     yield TestClient(app)
 
-        # Clean up the dependency overrides after the test
+    # Clean up the dependency overrides after the test
     app.dependency_overrides.clear()
-    
+
     # Close the test session and drop tables after the test
     test_session.close()
     SQLModel.metadata.drop_all(test_engine)
