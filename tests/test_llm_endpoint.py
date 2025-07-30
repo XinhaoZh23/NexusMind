@@ -27,21 +27,21 @@ def client():
     """
     # Create tables in the test database
     SQLModel.metadata.create_all(test_engine)
-    
+
     def get_test_session():
         """Override for get_session dependency to use test database."""
         with Session(test_engine) as session:
             yield session
-    
+
     # Override both the API key and database session dependencies
     app.dependency_overrides[get_api_key] = lambda: VALID_LLM_API_KEY
     app.dependency_overrides[get_session] = get_test_session
-    
+
     yield TestClient(app)
-    
+
     # Clean up the dependency overrides after the test
     app.dependency_overrides.clear()
-    
+
     # Drop tables after the test
     SQLModel.metadata.drop_all(test_engine)
 

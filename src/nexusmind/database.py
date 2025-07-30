@@ -39,7 +39,6 @@ def get_engine(db_url: str | None = None, **kwargs) -> Engine:
                 try:
                     config = get_core_config()
                     prod_db_url = config.postgres.get_db_url()
-                    print(f"--- [DEBUG] Production DB URL: {prod_db_url} ---")
                     _engine = create_engine(prod_db_url, echo=True)
                 except ValidationError as e:
                     logger.error(
