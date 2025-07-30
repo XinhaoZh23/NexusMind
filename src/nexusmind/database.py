@@ -14,17 +14,15 @@ _engine: Optional[Engine] = None
 _lock = Lock()
 
 
-@lru_cache()
-def get_engine(db_url: str | None = None, connect_args: dict | None = None) -> Engine:
+def get_engine(db_url: str | None = None, **kwargs) -> Engine:
     """
     Returns a SQLAlchemy Engine instance.
 
-    Uses a cached engine instance for the same database URL to avoid
-    creating multiple engines for the same database.
+    Uses a cached engine instance for production, or creates a new engine for tests.
 
     Args:
-        db_url: The database URL to connect to.
-        connect_args: A dictionary of arguments to pass to the engine.
+        db_url: The database URL to connect to. If provided, creates a new engine.
+        **kwargs: Additional arguments to pass to create_engine (e.g., connect_args, poolclass).
 
     Returns:
         A SQLAlchemy Engine instance.
@@ -35,7 +33,7 @@ def get_engine(db_url: str | None = None, connect_args: dict | None = None) -> E
     global _engine
     if db_url:
         # If a specific db_url is provided (typically for tests), create a new engine
-        return create_engine(db_url, connect_args=connect_args or {})
+        return create_engine(db_url, **kwargs)
 
     # Production path: use cached singleton engine
     if _engine is None:
