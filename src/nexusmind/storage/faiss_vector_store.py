@@ -6,9 +6,9 @@ from typing import List, Optional
 import faiss
 import numpy as np
 
-from ..llm.llm_endpoint import LLMEndpoint
-from ..processor.splitter import Chunk
-from .vector_store_base import VectorStoreBase
+from nexusmind.llm.llm_endpoint import LLMEndpoint
+from nexusmind.processor.splitter import Chunk
+from nexusmind.storage.vector_store_base import VectorStoreBase
 
 logger = logging.getLogger(__name__)
 
