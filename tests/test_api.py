@@ -151,6 +151,10 @@ def test_upload_and_verify_task_dispatch(
     - Verifies that the file metadata is correctly saved to the database.
     - Verifies that the Celery task (`process_file.delay`) is called once.
     """
+    # Configure the mock to return an object with a string `id` attribute
+    mock_task_id = str(uuid.uuid4())
+    mock_process_file_delay.return_value.id = mock_task_id
+
     headers = {"X-API-Key": VALID_API_KEY}
     brain_id = str(uuid.uuid4())
     files = {"file": ("test_doc.txt", test_txt_content.encode("utf-8"), "text/plain")}
