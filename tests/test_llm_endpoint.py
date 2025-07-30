@@ -25,24 +25,27 @@ def client():
     API key security dependency and database session dependency.
     This ensures complete isolation for testing protected endpoints.
     """
-    # Create tables in the test database
+        # Create tables in the test database
     SQLModel.metadata.create_all(test_engine)
-
+    
+    # Create a session for the test
+    test_session = Session(test_engine)
+    
     def get_test_session():
         """Override for get_session dependency to use test database."""
-        with Session(test_engine) as session:
-            yield session
-
+        return test_session
+    
     # Override both the API key and database session dependencies
     app.dependency_overrides[get_api_key] = lambda: VALID_LLM_API_KEY
     app.dependency_overrides[get_session] = get_test_session
 
     yield TestClient(app)
 
-    # Clean up the dependency overrides after the test
+        # Clean up the dependency overrides after the test
     app.dependency_overrides.clear()
-
-    # Drop tables after the test
+    
+    # Close the test session and drop tables after the test
+    test_session.close()
     SQLModel.metadata.drop_all(test_engine)
 
 
@@ -55,6 +58,8 @@ def test_unauthorized_access(client: TestClient):
         headers={"X-API-Key": "invalid-api-key"},
         json={"text": "Hello", "brain_id": "some-test-brain-id"},
     )
+    print(f"--- [DEBUG] Unauthorized test response status: {response.status_code} ---")
+    print(f"--- [DEBUG] Unauthorized test response body: {response.json()} ---")
     assert response.status_code == 401
     assert "Invalid API Key" in response.text
 
@@ -75,6 +80,8 @@ def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
         json={"text": "Hello, world!", "brain_id": "some-test-brain-id"},
     )
 
+    print(f"--- [DEBUG] Success test response status: {response.status_code} ---")
+    print(f"--- [DEBUG] Success test response body: {response.json()} ---")
     assert response.status_code == 200
     assert response.json()["response"] == "This is a test response."
     mock_litellm_completion.assert_called_once()
