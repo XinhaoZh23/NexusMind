@@ -55,6 +55,16 @@ def settings(monkeypatch):
     monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
     monkeypatch.setenv("S3_BUCKET_NAME", "test-bucket")
 
+    # Override DB and Redis for local testing
+    monkeypatch.setenv("POSTGRES_HOST", "localhost")
+    monkeypatch.setenv("POSTGRES_USER", "testuser")
+    monkeypatch.setenv("POSTGRES_PASSWORD", "testpassword")
+    monkeypatch.setenv("POSTGRES_DB", "testdb")
+    monkeypatch.setenv("POSTGRES_PORT", "5432")
+    monkeypatch.setenv("REDIS_HOST", "localhost")
+    monkeypatch.setenv("REDIS_PORT", "6379")
+    monkeypatch.setenv("REDIS_DB", "1")
+
     # Force Celery to run tasks eagerly (synchronously) and store results in tests
     celery_app.conf.update(
         task_always_eager=True,
