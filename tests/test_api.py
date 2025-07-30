@@ -31,20 +31,20 @@ engine = create_engine(
 def session_fixture():
     """
     Creates a new database session for each test.
-    This ensures that each test runs in isolation.
+    This fixture NO LONGER handles table creation/deletion.
     """
-    SQLModel.metadata.create_all(engine)
     with Session(engine) as session:
         yield session
-    SQLModel.metadata.drop_all(engine)
 
 
 @pytest.fixture(name="client")
 def client_fixture(session: Session, monkeypatch: pytest.MonkeyPatch):
     """
     Provides a TestClient that uses the in-memory SQLite database.
-    This fixture also handles S3 mocking and other environment settings.
+    This fixture now handles the entire lifecycle of the test database tables.
     """
+    # Create tables before the test runs
+    SQLModel.metadata.create_all(engine)
 
     def get_session_override():
         return session
@@ -119,6 +119,9 @@ def client_fixture(session: Session, monkeypatch: pytest.MonkeyPatch):
     # 7. Clean up overrides and caches after the test
     app.dependency_overrides.clear()
     get_core_config.cache_clear()
+
+    # Drop tables after the test has finished
+    SQLModel.metadata.drop_all(engine)
 
 
 @pytest.fixture
