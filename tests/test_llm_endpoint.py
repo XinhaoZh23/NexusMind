@@ -9,7 +9,12 @@ from nexusmind.llm.llm_endpoint import LLMEndpoint
 @pytest.fixture
 def core_config():
     """Pytest fixture for a CoreConfig instance."""
-    return CoreConfig(llm_model_name="test-model", temperature=0.5, max_tokens=100)
+    return CoreConfig(
+        llm_model_name="test-model",
+        temperature=0.5,
+        max_tokens=100,
+        _env_file=None,  # Disable loading from environment
+    )
 
 
 @patch("litellm.completion")

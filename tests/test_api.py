@@ -82,9 +82,11 @@ def client_fixture(session: Session, monkeypatch: pytest.MonkeyPatch):
                 secret_key=SecretStr("minioadmin"),
                 endpoint=f"http://localhost:{os.getenv('S3_PORT')}",
                 bucket=os.getenv("S3_BUCKET_NAME"),
+                _env_file=None,  # Disable loading from environment
             ),
             postgres=create_autospec(PostgresConfig, instance=True),
             redis=create_autospec(RedisConfig, instance=True),
+            _env_file=None,  # Disable loading from environment
         )
 
     # 3. Force Celery to run tasks eagerly for synchronous testing

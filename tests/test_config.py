@@ -44,6 +44,7 @@ def test_environment_variable_override(monkeypatch):
     monkeypatch.setenv("LLM_MODEL_NAME", "test-model-override")
     monkeypatch.setenv("TEMPERATURE", "0.8")
     # Set all other required variables to satisfy validation
+    monkeypatch.setenv("API_KEYS", '["test-key"]')  # Set a valid JSON array
     monkeypatch.setenv("OPENAI_API_KEY", "test_key")
     monkeypatch.setenv("STORAGE_BASE_PATH", "/tmp")
     monkeypatch.setenv("CELERY_BROKER_URL", "redis://localhost")
@@ -69,6 +70,7 @@ def test_type_validation(monkeypatch):
     get_core_config.cache_clear()
     monkeypatch.setenv("MAX_TOKENS", "not-an-integer")
     # Set all other required variables to satisfy validation
+    monkeypatch.setenv("API_KEYS", '["test-key"]')  # Set a valid JSON array
     monkeypatch.setenv("OPENAI_API_KEY", "test_key")
     monkeypatch.setenv("STORAGE_BASE_PATH", "/tmp")
     monkeypatch.setenv("CELERY_BROKER_URL", "redis://localhost")
@@ -93,6 +95,7 @@ def test_no_env_file_loads_defaults(monkeypatch):
     """
     get_core_config.cache_clear()
     # Set only the required variables, leaving defaults to be tested
+    monkeypatch.setenv("API_KEYS", '["test-key"]')  # Set a valid JSON array
     monkeypatch.setenv("OPENAI_API_KEY", "test_key")
     monkeypatch.setenv("STORAGE_BASE_PATH", "/tmp")
     monkeypatch.setenv("CELERY_BROKER_URL", "redis://localhost")
