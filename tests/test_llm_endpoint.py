@@ -86,6 +86,7 @@ def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
     Test a successful chat interaction with all dependencies mocked.
     We specifically override the api_key dependency for this single test.
     """
+
     # 1. Setup Mocks
     async def get_api_key_override_authorized():
         return VALID_LLM_API_KEY
