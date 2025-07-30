@@ -40,7 +40,7 @@ def session_fixture():
 
 
 @pytest.fixture(name="client")
-def client_fixture(session: Session, monkeypatch):
+def client_fixture(session: Session, monkeypatch: pytest.MonkeyPatch):
     """
     Provides a TestClient that uses the in-memory SQLite database.
     This fixture also handles S3 mocking and other environment settings.
