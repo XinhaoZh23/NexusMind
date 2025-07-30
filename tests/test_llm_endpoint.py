@@ -6,10 +6,22 @@ from fastapi.testclient import TestClient
 from main import app
 from nexusmind.config import CoreConfig, get_core_config
 
+VALID_LLM_API_KEY = "test-llm-api-key"
+
 
 def get_test_llm_config():
-    """Returns a CoreConfig instance for testing the LLM endpoint."""
-    return CoreConfig(llm_model_name="test-model", temperature=0.5, max_tokens=150)
+    """
+    Returns a CoreConfig instance for testing the LLM endpoint.
+    We explicitly provide all necessary values to ensure the test is hermetic
+    and does not rely on implicit environment variable loading within the
+    dependency override context.
+    """
+    return CoreConfig(
+        llm_model_name="test-model",
+        temperature=0.5,
+        max_tokens=150,
+        api_keys=[VALID_LLM_API_KEY],
+    )
 
 
 @pytest.fixture
@@ -48,10 +60,9 @@ def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
     mock_litellm_completion.return_value = mock_response
 
     # Test with a valid API key from the overridden config
-    api_key = get_test_llm_config().api_keys[0]
     response = client.post(
         "/chat",
-        headers={"X-API-Key": f"{api_key}"},
+        headers={"X-API-Key": VALID_LLM_API_KEY},
         json={"text": "Hello, world!"},
     )
 
