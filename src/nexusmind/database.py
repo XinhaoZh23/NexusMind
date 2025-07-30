@@ -1,49 +1,62 @@
-from typing import Optional
+from typing import Optional, Generator
+from functools import lru_cache
+from threading import Lock
 
 from sqlalchemy.engine import Engine
 from sqlmodel import Session, SQLModel, create_engine
+from sqlalchemy.exc import ValidationError
 
 from .config import get_core_config
 from .logger import logger
 
 # Global variable to cache the production engine
 _engine: Optional[Engine] = None
+_lock = Lock()
 
 
-def get_engine(db_url: Optional[str] = None, **kwargs) -> Engine:
+@lru_cache()
+def get_engine(db_url: str | None = None, connect_args: dict | None = None) -> Engine:
     """
-    Returns a SQLAlchemy engine.
+    Returns a SQLAlchemy Engine instance.
 
-    This function implements a singleton pattern for the production engine.
-    If db_url is provided (for testing), it creates a new engine every time.
-    If db_url is not provided, it returns a cached engine for production use.
+    Uses a cached engine instance for the same database URL to avoid
+    creating multiple engines for the same database.
 
-    :param db_url: The database URL to connect to.
-    :param kwargs: Additional arguments to pass to create_engine (e.g., poolclass).
-    :return: A SQLAlchemy Engine instance.
+    Args:
+        db_url: The database URL to connect to.
+        connect_args: A dictionary of arguments to pass to the engine.
+
+    Returns:
+        A SQLAlchemy Engine instance.
     """
+    print(f"--- [DEBUG] get_engine CALLED ---")
+    print(f"--- [DEBUG] Received db_url: {db_url} ---")
+
     global _engine
-
     if db_url:
-        # For tests: create a new engine with the provided URL and kwargs.
-        logger.info(f"Creating new test engine for db_url: {db_url}")
-        return create_engine(db_url, echo=False, **kwargs)
+        # If a specific db_url is provided (typically for tests), create a new engine
+        return create_engine(db_url, connect_args=connect_args or {})
 
-    # For production: use the cached engine if it exists.
+    # Production path: use cached singleton engine
     if _engine is None:
-        logger.info("Creating new production database engine...")
-        try:
-            config = get_core_config()
-            production_db_url = config.postgres.get_db_url()
-            _engine = create_engine(production_db_url, echo=False)
-            logger.info("Production database engine created and cached.")
-        except Exception as e:
-            logger.error(f"Failed to create database engine: {e}", exc_info=True)
-            raise
+        with _lock:
+            if _engine is None:
+                try:
+                    config = get_core_config()
+                    prod_db_url = config.postgres.get_db_url()
+                    print(f"--- [DEBUG] Production DB URL: {prod_db_url} ---")
+                    _engine = create_engine(prod_db_url, echo=True)
+                except ValidationError as e:
+                    logger.error(
+                        "Failed to create database engine due to config validation error: {}",
+                        e,
+                        exc_info=True,
+                    )
+                    raise
     return _engine
 
 
-def get_session():
+def get_session() -> Generator[Session, None, None]:
     """
     Dependency provider for FastAPI to get a database session.
     It ensures that the session is always closed after the request is finished.
