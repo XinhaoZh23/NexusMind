@@ -29,8 +29,8 @@ def get_engine(db_url: str | None = None, connect_args: dict | None = None) -> E
     Returns:
         A SQLAlchemy Engine instance.
     """
-    print(f"--- [DEBUG] get_engine CALLED ---")
-    print(f"--- [DEBUG] Received db_url: {db_url} ---")
+    print(f"--- [DEBUG] get_engine CALLED ---")  # noqa
+    print(f"--- [DEBUG] Received db_url: {db_url} ---")  # noqa
 
     global _engine
     if db_url:
@@ -48,7 +48,7 @@ def get_engine(db_url: str | None = None, connect_args: dict | None = None) -> E
                     _engine = create_engine(prod_db_url, echo=True)
                 except ValidationError as e:
                     logger.error(
-                        "Failed to create database engine due to config validation error: {}",
+                        "Failed to create database engine due to config validation error: {}",  # noqa
                         e,
                         exc_info=True,
                     )
