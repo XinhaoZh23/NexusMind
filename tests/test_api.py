@@ -69,16 +69,18 @@ def client_fixture(session: Session, monkeypatch):
 
     # 2. Define a dependency override for CoreConfig
     def get_test_config():
+        # Create a mock CoreConfig, providing mocks for the database and redis
+        # configurations that we don't want to instantiate.
         return CoreConfig(
-            api_keys=[VALID_API_KEY],
+            api_keys=APIKeyConfig(keys=[SecretStr(VALID_API_KEY)]),
             minio=MinioConfig(
-                endpoint="http://localhost:9000",
                 access_key="minioadmin",
                 secret_key=SecretStr("minioadmin"),
-                bucket="test-bucket",
+                endpoint=f"http://localhost:{os.getenv('S3_PORT')}",
+                bucket=os.getenv("S3_BUCKET_NAME"),
             ),
-            postgres=None,  # Explicitly set to None for tests
-            redis=None,  # Explicitly set to None for tests
+            postgres=MagicMock(),
+            redis=MagicMock(),
         )
 
     # 3. Force Celery to run tasks eagerly for synchronous testing
