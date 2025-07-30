@@ -7,6 +7,7 @@ import pytest
 from fastapi.testclient import TestClient
 from moto import mock_aws
 from pydantic import SecretStr
+from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel, create_engine
 
 from main import app, get_core_config
@@ -24,6 +25,7 @@ VALID_API_KEY = "test-key"
 engine = create_engine(
     "sqlite:///:memory:",
     connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
 )
 
 
@@ -47,6 +49,7 @@ def client_fixture(session: Session, monkeypatch: pytest.MonkeyPatch):
     SQLModel.metadata.create_all(engine)
 
     def get_session_override():
+        # Using session.get_bind() to get the engine associated with the session
         return session
 
     # 1. Set environment variables for testing
