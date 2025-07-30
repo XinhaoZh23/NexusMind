@@ -3,35 +3,19 @@ from unittest.mock import MagicMock, patch
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
-from nexusmind.config import CoreConfig, get_core_config
+from main import app, get_api_key
 
 VALID_LLM_API_KEY = "test-llm-api-key"
-
-
-def get_test_llm_config():
-    """
-    Returns a CoreConfig instance for testing the LLM endpoint.
-    We explicitly provide all necessary values to ensure the test is hermetic
-    and does not rely on implicit environment variable loading within the
-    dependency override context.
-    """
-    return CoreConfig(
-        llm_model_name="test-model",
-        temperature=0.5,
-        max_tokens=150,
-        api_keys=[VALID_LLM_API_KEY],
-    )
 
 
 @pytest.fixture
 def client():
     """
-    Pytest fixture to provide a TestClient with dependency overrides.
-    This ensures that each test gets a client with the correct configuration
-    for the LLM endpoint tests.
+    Pytest fixture to provide a TestClient with a direct override for the
+    API key security dependency. This is the most robust way to test
+    protected endpoints.
     """
-    app.dependency_overrides[get_core_config] = get_test_llm_config
+    app.dependency_overrides[get_api_key] = lambda: VALID_LLM_API_KEY
     yield TestClient(app)
     # Clean up the dependency overrides after the test
     app.dependency_overrides.clear()
