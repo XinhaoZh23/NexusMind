@@ -28,7 +28,7 @@ def test_unauthorized_access(client: TestClient):
     response = client.post(
         "/chat",
         headers={"X-API-Key": "invalid-api-key"},
-        json={"text": "Hello"},
+        json={"text": "Hello", "brain_id": "some-test-brain-id"},
     )
     assert response.status_code == 401
     assert "Invalid API Key" in response.text
@@ -47,7 +47,7 @@ def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
     response = client.post(
         "/chat",
         headers={"X-API-Key": VALID_LLM_API_KEY},
-        json={"text": "Hello, world!"},
+        json={"text": "Hello, world!", "brain_id": "some-test-brain-id"},
     )
 
     assert response.status_code == 200
