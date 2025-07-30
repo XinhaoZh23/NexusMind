@@ -72,7 +72,7 @@ def client_fixture(session: Session, monkeypatch):
         # Create a mock CoreConfig, providing mocks for the database and redis
         # configurations that we don't want to instantiate.
         return CoreConfig(
-            api_keys=APIKeyConfig(keys=[SecretStr(VALID_API_KEY)]),
+            api_keys=[VALID_API_KEY],
             minio=MinioConfig(
                 access_key="minioadmin",
                 secret_key=SecretStr("minioadmin"),
