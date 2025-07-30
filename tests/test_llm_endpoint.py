@@ -1,3 +1,5 @@
+import uuid
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -56,10 +58,8 @@ def test_unauthorized_access(client: TestClient):
     response = client.post(
         "/chat",
         headers={"X-API-Key": "invalid-api-key"},
-        json={"text": "Hello", "brain_id": "some-test-brain-id"},
+        json={"question": "Hello", "brain_id": str(uuid.uuid4())},
     )
-    print(f"--- [DEBUG] Unauthorized test response status: {response.status_code} ---")
-    print(f"--- [DEBUG] Unauthorized test response body: {response.json()} ---")
     assert response.status_code == 401
     assert "Invalid API Key" in response.text
 
@@ -77,11 +77,9 @@ def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
     response = client.post(
         "/chat",
         headers={"X-API-Key": VALID_LLM_API_KEY},
-        json={"text": "Hello, world!", "brain_id": "some-test-brain-id"},
+        json={"question": "Hello, world!", "brain_id": str(uuid.uuid4())},
     )
 
-    print(f"--- [DEBUG] Success test response status: {response.status_code} ---")
-    print(f"--- [DEBUG] Success test response body: {response.json()} ---")
     assert response.status_code == 200
     assert response.json()["response"] == "This is a test response."
     mock_litellm_completion.assert_called_once()
