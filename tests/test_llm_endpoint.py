@@ -1,11 +1,13 @@
-from unittest.mock import AsyncMock, MagicMock, patch
+import uuid
+from unittest.mock import MagicMock, patch
 
+import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import StaticPool
 from sqlmodel import Session, SQLModel
 
-from main import app
+from main import app, get_api_key, get_session
 from nexusmind.brain.brain import Brain
 from nexusmind.database import get_engine
 
@@ -19,99 +21,104 @@ test_engine = get_engine(
 )
 
 
-def setup_module(module):
-    """Create database tables before any tests in this module run."""
+@pytest.fixture(scope="module", autouse=True)
+def setup_and_teardown_module():
+    """Create and drop database tables for the entire module."""
     SQLModel.metadata.create_all(test_engine)
-
-
-def teardown_module(module):
-    """Drop database tables after all tests in this module have run."""
+    yield
     SQLModel.metadata.drop_all(test_engine)
 
 
-@patch("main.get_session")
-@patch("main.get_api_key", new_callable=AsyncMock)
-def test_unauthorized_access(mock_get_api_key, mock_get_session):
+@pytest.fixture(name="client")
+def client_fixture():
+    """
+    Pytest fixture to provide a TestClient with mocked dependencies.
+    This is the standard and most robust way to test FastAPI applications.
+    """
+
+    def get_session_override():
+        with Session(test_engine) as session:
+            yield session
+
+    async def get_api_key_override_unauthorized():
+        raise HTTPException(status_code=401, detail="Invalid API Key")
+
+    async def get_api_key_override_authorized():
+        return VALID_LLM_API_KEY
+
+    # Temporarily override the dependencies for the duration of the test
+    app.dependency_overrides[get_session] = get_session_override
+    app.dependency_overrides[
+        get_api_key
+    ] = get_api_key_override_unauthorized  # Default to unauthorized
+    yield TestClient(app)
+
+    # Clean up the dependency overrides after the test
+    app.dependency_overrides.clear()
+
+
+def test_unauthorized_access(client: TestClient):
     """
     Test that a request with an invalid API key is correctly rejected.
+    The client fixture defaults to an unauthorized state.
     """
-    # 1. Setup Mocks for an async function
-    # The side_effect needs to be a callable that returns the exception
-    mock_get_api_key.side_effect = HTTPException(
-        status_code=401, detail="Invalid API Key"
+    # 1. Prepare test data
+    brain = Brain(
+        name="Test Brain for Unauthorized",
+        llm_model_name="test-model",
+        temperature=0.5,
+        max_tokens=100,
     )
+    brain.save()
 
-    # Even though it's an auth test, the session dependency still needs to be mocked
-    with Session(test_engine) as session:
-        mock_get_session.return_value = session
-
-        # 2. Create TestClient inside the patched context
-        client = TestClient(app)
-
-        # 3. Prepare test data
-        brain = Brain(
-            name="Test Brain for Unauthorized",
-            llm_model_name="test-model",
-            temperature=0.5,
-            max_tokens=100,
-        )
-        brain.save()
-
-        # 4. Make the request and assert
-        response = client.post(
-            "/chat",
-            headers={"X-API-Key": "invalid-api-key"},
-            json={"question": "Hello", "brain_id": str(brain.brain_id)},
-        )
-        assert response.status_code == 401
-        assert response.json()["detail"] == "Invalid API Key"
+    # 2. Make the request and assert
+    response = client.post(
+        "/chat",
+        headers={"X-API-Key": "invalid-api-key"},
+        json={"question": "Hello", "brain_id": str(brain.brain_id)},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Invalid API Key"
 
 
 @patch("litellm.completion")
-@patch("main.get_session")
-@patch("main.get_api_key", new_callable=AsyncMock)
-def test_chat_endpoint_success(
-    mock_get_api_key, mock_get_session, mock_litellm_completion
-):
+def test_chat_endpoint_success(mock_litellm_completion, client: TestClient):
     """
     Test a successful chat interaction with all dependencies mocked.
+    We specifically override the api_key dependency for this single test.
     """
-    # 1. Setup Mocks for async and sync functions
-    mock_get_api_key.return_value = VALID_LLM_API_KEY
+    # 1. Setup Mocks
+    async def get_api_key_override_authorized():
+        return VALID_LLM_API_KEY
 
-    with Session(test_engine) as session:
-        mock_get_session.return_value = session
+    app.dependency_overrides[get_api_key] = get_api_key_override_authorized
 
-        mock_response = MagicMock()
-        mock_response.choices = [MagicMock()]
-        mock_response.choices[0].message.content = "This is a test response."
-        mock_litellm_completion.return_value = mock_response
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "This is a test response."
+    mock_litellm_completion.return_value = mock_response
 
-        # 2. Create TestClient inside the patched context
-        client = TestClient(app)
+    # 2. Prepare test data
+    brain = Brain(
+        name="Test Brain for Success",
+        llm_model_name="test-model",
+        temperature=0.5,
+        max_tokens=100,
+    )
+    brain.save()
 
-        # 3. Prepare test data
-        brain = Brain(
-            name="Test Brain for Success",
-            llm_model_name="test-model",
-            temperature=0.5,
-            max_tokens=100,
-        )
-        brain.save()
+    # 3. Make the request and assert
+    response = client.post(
+        "/chat",
+        headers={"X-API-Key": VALID_LLM_API_KEY},
+        json={"question": "Hello, world!", "brain_id": str(brain.brain_id)},
+    )
 
-        # 4. Make the request and assert
-        response = client.post(
-            "/chat",
-            headers={"X-API-Key": VALID_LLM_API_KEY},
-            json={"question": "Hello, world!", "brain_id": str(brain.brain_id)},
-        )
+    assert response.status_code == 200
+    assert response.json()["answer"] == "This is a test response."
+    mock_litellm_completion.assert_called_once()
+    call_args, call_kwargs = mock_litellm_completion.call_args
+    assert call_kwargs["model"] == "test-model"
 
-        assert response.status_code == 200
-        assert response.json()["answer"] == "This is a test response."
-        mock_litellm_completion.assert_called_once()
-        call_args, call_kwargs = mock_litellm_completion.call_args
-        assert call_kwargs["model"] == "test-model"
-        # Note: The actual call to the LLM now happens inside NexusRAG,
-        # so we are not asserting the exact messages/temperature/max_tokens here,
-        # as that would be testing the implementation of NexusRAG, not the endpoint.
-        # This keeps the endpoint test focused on its own logic.
+    # Clean up the specific override for this test
+    del app.dependency_overrides[get_api_key]
