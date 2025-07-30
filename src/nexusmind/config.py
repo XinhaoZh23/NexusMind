@@ -51,7 +51,7 @@ class CoreConfig(BaseConfig):
 
     postgres: PostgresConfig = Field(default_factory=PostgresConfig)
     redis: RedisConfig = Field(default_factory=RedisConfig)
-    minio: MinioConfig | None = None
+    minio: MinioConfig = Field(default_factory=MinioConfig)
 
     # The following validator is deprecated and has been removed.
     # Pydantic's modern built-in logic for `Optional` types handles this

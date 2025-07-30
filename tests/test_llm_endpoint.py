@@ -30,14 +30,14 @@ def test_unauthorized_access():
     """
     response = client.post(
         "/chat",
-        headers={"Authorization": "Bearer invalid-api-key"},
+        headers={"X-API-Key": "invalid-api-key"},
         json={"text": "Hello"},
     )
     assert response.status_code == 401
     assert "Invalid API Key" in response.text
 
 
-@patch("main.litellm.completion")
+@patch("litellm.completion")
 def test_chat_endpoint_success(mock_litellm_completion):
     """Test the /chat endpoint for a successful interaction."""
     # Mock the response from litellm
@@ -50,7 +50,7 @@ def test_chat_endpoint_success(mock_litellm_completion):
     api_key = get_test_llm_config().api_keys[0]
     response = client.post(
         "/chat",
-        headers={"Authorization": f"Bearer {api_key}"},
+        headers={"X-API-Key": f"{api_key}"},
         json={"text": "Hello, world!"},
     )
 
