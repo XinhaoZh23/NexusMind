@@ -3,7 +3,7 @@ from threading import Lock
 from typing import Generator, Optional
 
 from sqlalchemy.engine import Engine
-from sqlalchemy.exc import ValidationError
+from pydantic_core import ValidationError
 from sqlmodel import Session, SQLModel, create_engine
 
 from .config import get_core_config
