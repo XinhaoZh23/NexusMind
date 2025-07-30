@@ -36,7 +36,9 @@ def test_unauthorized_access(mock_get_api_key, mock_get_session):
     Test that a request with an invalid API key is correctly rejected.
     """
     # 1. Setup Mocks
-    mock_get_api_key.side_effect = HTTPException(status_code=401, detail="Invalid API Key")  # noqa
+    mock_get_api_key.side_effect = HTTPException(
+        status_code=401, detail="Invalid API Key"
+    )  # noqa
     # Even though it's an auth test,
     # the session dependency still needs to be mocked
     with Session(test_engine) as session:
@@ -67,7 +69,9 @@ def test_unauthorized_access(mock_get_api_key, mock_get_session):
 @patch("litellm.completion")
 @patch("main.get_session")
 @patch("main.get_api_key")
-def test_chat_endpoint_success(mock_get_api_key, mock_get_session, mock_litellm_completion):  # noqa
+def test_chat_endpoint_success(
+    mock_get_api_key, mock_get_session, mock_litellm_completion
+):  # noqa
     """
     Test a successful chat interaction with all dependencies mocked.
     """
