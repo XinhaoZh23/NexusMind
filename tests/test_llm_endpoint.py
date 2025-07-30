@@ -2,23 +2,48 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy.pool import StaticPool
+from sqlmodel import Session, SQLModel
 
 from main import app, get_api_key
+from nexusmind.database import get_engine, get_session
 
 VALID_LLM_API_KEY = "test-llm-api-key"
+
+# Create a test engine for the LLM endpoint tests
+test_engine = get_engine(
+    db_url="sqlite:///:memory:",
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool,
+)
 
 
 @pytest.fixture
 def client():
     """
-    Pytest fixture to provide a TestClient with a direct override for the
-    API key security dependency. This is the most robust way to test
-    protected endpoints.
+    Pytest fixture to provide a TestClient with overrides for both
+    API key security dependency and database session dependency.
+    This ensures complete isolation for testing protected endpoints.
     """
+    # Create tables in the test database
+    SQLModel.metadata.create_all(test_engine)
+    
+    def get_test_session():
+        """Override for get_session dependency to use test database."""
+        with Session(test_engine) as session:
+            yield session
+    
+    # Override both the API key and database session dependencies
     app.dependency_overrides[get_api_key] = lambda: VALID_LLM_API_KEY
+    app.dependency_overrides[get_session] = get_test_session
+    
     yield TestClient(app)
+    
     # Clean up the dependency overrides after the test
     app.dependency_overrides.clear()
+    
+    # Drop tables after the test
+    SQLModel.metadata.drop_all(test_engine)
 
 
 def test_unauthorized_access(client: TestClient):

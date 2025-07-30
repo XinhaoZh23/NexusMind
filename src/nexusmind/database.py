@@ -27,9 +27,6 @@ def get_engine(db_url: str | None = None, **kwargs) -> Engine:
     Returns:
         A SQLAlchemy Engine instance.
     """
-    print(f"--- [DEBUG] get_engine CALLED ---")  # noqa
-    print(f"--- [DEBUG] Received db_url: {db_url} ---")  # noqa
-
     global _engine
     if db_url:
         # If a specific db_url is provided (typically for tests), create a new engine
