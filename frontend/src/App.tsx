@@ -71,7 +71,7 @@ function App() {
     try {
       const response = await axios.get('/api/brains', {
         headers: {
-          'X-API-Key': 'your-super-secret-key',
+          'X-API-Key': 'prod-nexusmind-secret-key-2024-!@#$-axb',
         },
       });
       const brainsData = response.data.brains;
@@ -87,7 +87,7 @@ function App() {
     try {
       const response = await axios.get(`/api/brains/${brainId}/files`, {
         headers: {
-          'X-API-Key': 'your-super-secret-key',
+          'X-API-Key': 'prod-nexusmind-secret-key-2024-!@#$-axb',
         },
       });
       setFiles(response.data.files);
@@ -136,7 +136,7 @@ function App() {
         { name: newName },
         {
           headers: {
-            'X-API-Key': 'your-super-secret-key',
+            'X-API-Key': 'prod-nexusmind-secret-key-2024-!@#$-axb',
             'Content-Type': 'application/json',
           },
         }
@@ -155,7 +155,7 @@ function App() {
       // No request body is needed, the backend will create a brain with defaults
       const response = await axios.post('/api/brains', {}, {
         headers: {
-          'X-API-Key': 'your-super-secret-key',
+          'X-API-Key': 'prod-nexusmind-secret-key-2024-!@#$-axb',
         },
       });
       // After creating, fetch the updated list of brains
@@ -201,7 +201,7 @@ function App() {
         // We fetch the files and check if the new file is present.
         // We don't update the state here directly to avoid UI flicker.
         axios.get<{ files: BrainFile[] }>(`/api/brains/${currentBrainId}/files`, {
-          headers: { 'X-API-Key': 'your-super-secret-key' },
+          headers: { 'X-API-Key': 'prod-nexusmind-secret-key-2024-!@#$-axb' },
         }).then(response => {
           console.log(`[App.tsx] Polling... Trying to find filename: "${fileName}" in received files:`, response.data.files);
           const foundFile = response.data.files.find(file => file.file_name === fileName);
