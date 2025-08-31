@@ -103,6 +103,7 @@ jobs:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 20m
           script: |
             cd /home/ubuntu/
             docker compose -f docker-compose.prod.yml pull
