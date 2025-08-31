@@ -5,13 +5,15 @@ FROM node:18-alpine
 WORKDIR /usr/src/app
 
 # Copy package.json and package-lock.json (if available)
-COPY package*.json ./
+COPY websocket_gateway/package.json ./
+COPY websocket_gateway/package-lock.json* ./
+
 
 # Install app dependencies
 RUN npm install
 
 # Bundle app source
-COPY . .
+COPY websocket_gateway/. .
 
 # Expose the port the app runs on
 EXPOSE 8080
