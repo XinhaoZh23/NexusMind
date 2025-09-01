@@ -6,6 +6,8 @@ from typing import Dict, List
 import uvicorn
 from celery.result import AsyncResult
 from fastapi import Depends, FastAPI, File, Form, HTTPException, Security, UploadFile
+from fastapi.requests import Request
+from fastapi.responses import JSONResponse
 from fastapi.security import APIKeyHeader
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -76,6 +78,23 @@ def on_startup():
 
         # s3_client = boto3.client("s3", **client_kwargs)
         # s3_storage = S3Storage(config=config.minio, s3_client=s3_client)
+
+
+# --- Global Exception Handler ---
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """
+    Catch-all exception handler to log any unhandled exceptions.
+    This is crucial for debugging issues in production.
+    """
+    logger.error(
+        f"Unhandled exception during request to {request.url.path}: {exc}",
+        exc_info=True,
+    )
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"An internal server error occurred: {exc}"},
+    )
 
 
 # --- Configuration and Dependency Injection ---
@@ -305,24 +324,10 @@ async def upload_file(
             task_id=task.id, message="File upload accepted and is being processed."
         )
     except Exception as e:
-        # Check if the exception is from botocore and relates to authentication
-        if "botocore.exceptions" in str(type(e)):
-            logger.error(
-                f"S3 Authentication Error during file upload for {file.filename}: {e}",
-                exc_info=True,
-            )
-            raise HTTPException(
-                status_code=403, detail=f"S3 Authentication Failed: {e}"
-            )
-
         logger.error(
-            f"An unexpected error occurred during file upload for {file.filename}: {e}",
-            exc_info=True,
+            f"Failed to queue file processing for {file.filename}: {e}", exc_info=True
         )
-        raise HTTPException(
-            status_code=500,
-            detail="An unexpected error occurred during file processing.",
-        )
+        raise HTTPException(status_code=500, detail="Failed to start file processing.")
 
 
 @app.get("/upload/status/{task_id}", response_model=StatusResponse)
