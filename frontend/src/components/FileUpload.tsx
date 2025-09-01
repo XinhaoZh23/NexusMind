@@ -52,7 +52,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUploaded, currentB
       await axios.post('/api/upload', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
-          'X-API-Key': 'your-super-secret-key', // Use the correct API key
+          'X-API-Key': process.env.REACT_APP_API_KEY,
         },
         onUploadProgress: (progressEvent) => {
           const percentCompleted = Math.round(
