@@ -83,7 +83,7 @@ jobs:
           context: .
           file: ./nginx/Dockerfile
           build-args: |
-            REACT_APP_API_KEY=${{ secrets.REACT_APP_API_KEY }}
+            VITE_API_KEY=${{ secrets.VITE_API_KEY }}
           push: true
           tags: |
             ${{ secrets.DOCKER_USERNAME }}/nexusmind-nginx:${{ github.sha }}
