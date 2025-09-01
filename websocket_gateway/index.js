@@ -16,11 +16,34 @@ const io = new Server(server, {
 
 // Read the backend URL and API Key from environment variables
 const FASTAPI_URL = process.env.FASTAPI_URL;
-const API_KEY = process.env.API_KEY;
+let API_KEY = null;
+
+// Try to get API key from API_KEYS (plural, JSON array) which is used by the API server
+const apiKeysEnv = process.env.API_KEYS;
+if (apiKeysEnv) {
+  try {
+    const keys = JSON.parse(apiKeysEnv);
+    if (Array.isArray(keys) && keys.length > 0) {
+      API_KEY = keys[0];
+      console.log("Successfully parsed API key from API_KEYS environment variable.");
+    }
+  } catch (e) {
+    console.error("Could not parse API_KEYS as JSON. Will try fallback.", e.message);
+  }
+}
+
+// If not found in API_KEYS, fall back to API_KEY (singular) for local dev compatibility
+if (!API_KEY) {
+  API_KEY = process.env.API_KEY;
+  if(API_KEY) {
+    console.log("Using API key from fallback API_KEY environment variable.");
+  }
+}
+
 
 // Exit if the environment variables are not set. This is a crucial check.
 if (!FASTAPI_URL || !API_KEY) {
-  console.error('FATAL ERROR: The FASTAPI_URL and API_KEY environment variables must be set.');
+  console.error('FATAL ERROR: The FASTAPI_URL and a valid API Key (from API_KEYS or API_KEY) environment variables must be set.');
   process.exit(1);
 }
 

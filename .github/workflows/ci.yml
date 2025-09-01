@@ -105,6 +105,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           timeout: 20m
           script: |
+            echo "${{ secrets.PROD_DOCKER_COMPOSE }}" > /home/ubuntu/docker-compose.prod.yml
             cd /home/ubuntu/
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans

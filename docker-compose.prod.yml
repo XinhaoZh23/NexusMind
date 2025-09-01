@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   api-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: xinhaozhang23/nexusmind-api-server:latest
     ports:
       - "8000:8000"
     volumes:
@@ -18,9 +16,7 @@ services:
       - nexusmind_network
 
   worker:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: xinhaozhang23/nexusmind-worker:latest
     command: poetry run celery -A nexusmind.celery_app worker --loglevel=info -Q brain_item_queue,file_processing_queue
     volumes:
       - ./storage:/app/storage
@@ -31,22 +27,16 @@ services:
       - nexusmind_network
 
   websocket-gateway:
-    build:
-      context: ./websocket_gateway
-      dockerfile: Dockerfile
+    image: xinhaozhang23/nexusmind-websocket-gateway:latest
     ports:
       - "8001:8001"
-    environment:
-      - FASTAPI_URL=http://api-server:8000
     env_file:
-      - .env.prod
+      - .env
     networks:
       - nexusmind_network
 
   nginx:
-    build:
-      context: .
-      dockerfile: nginx/Dockerfile
+    image: xinhaozhang23/nexusmind-nginx:latest
     ports:
       - "80:80"
     depends_on:
@@ -57,4 +47,4 @@ services:
 
 networks:
   nexusmind_network:
-    driver: bridge 
+    driver: bridge
