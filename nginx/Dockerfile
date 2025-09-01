@@ -13,6 +13,12 @@ RUN npm install
 # Copy the rest of the frontend application source code
 COPY frontend/ .
 
+# Declare the ARG that will be passed from the docker build command
+ARG REACT_APP_API_KEY
+
+# Set the ARG as an environment variable
+ENV REACT_APP_API_KEY=$REACT_APP_API_KEY
+
 # Build the application for production
 RUN npm run build
 
