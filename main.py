@@ -305,10 +305,23 @@ async def upload_file(
             task_id=task.id, message="File upload accepted and is being processed."
         )
     except Exception as e:
+        # Check if the exception is from botocore and relates to authentication
+        if "botocore.exceptions" in str(type(e)):
+            logger.error(
+                f"S3 Authentication Error during file upload for {file.filename}: {e}",
+                exc_info=True,
+            )
+            raise HTTPException(
+                status_code=403, detail=f"S3 Authentication Failed: {e}"
+            )
+
         logger.error(
-            f"Failed to queue file processing for {file.filename}: {e}", exc_info=True
+            f"An unexpected error occurred during file upload for {file.filename}: {e}",
+            exc_info=True,
         )
-        raise HTTPException(status_code=500, detail="Failed to start file processing.")
+        raise HTTPException(
+            status_code=500, detail="An unexpected error occurred during file processing."
+        )
 
 
 @app.get("/upload/status/{task_id}", response_model=StatusResponse)
