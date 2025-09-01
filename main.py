@@ -320,7 +320,8 @@ async def upload_file(
             exc_info=True,
         )
         raise HTTPException(
-            status_code=500, detail="An unexpected error occurred during file processing."
+            status_code=500,
+            detail="An unexpected error occurred during file processing.",
         )
 
 
