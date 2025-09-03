@@ -95,6 +95,7 @@ Please answer the question: {question}"""
 
         # b. Augment the prompt
         prompt = self._generate_prompt(question, retrieved_chunks)
+        logger.info(f"Generated prompt for LLM: {prompt}")  # DEBUG: Log the full prompt
         messages = [{"role": "user", "content": prompt}]
 
         # c. Generate the answer using the LLM
