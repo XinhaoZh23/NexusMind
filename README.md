@@ -1,3 +1,5 @@
+![Live Demo](assets/images/live_demo.png)
+
 # NEXUSMIND: End-to-End AI Q&A Knowledge Platform
 
 NEXUSMIND is a full-stack, AI-powered knowledge platform built with a modern microservices architecture. It combines the robust data processing and machine learning capabilities of Python (FastAPI, Celery) with the high-concurrency I/O handling of Node.js (Express), providing a seamless and real-time user experience via a React frontend.
