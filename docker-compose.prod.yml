@@ -7,7 +7,7 @@ services:
       - "8000:8000"
     volumes:
       - ./storage:/app/storage
-      - ./src:/app/src
+      # - ./src:/app/src  # This should not be mounted in production
       - ./alembic:/app/alembic
       - ./alembic.ini:/app/alembic.ini
     env_file:
@@ -20,7 +20,7 @@ services:
     command: poetry run celery -A nexusmind.celery_app worker --loglevel=info -Q brain_item_queue,file_processing_queue
     volumes:
       - ./storage:/app/storage
-      - ./src:/app/src
+      # - ./src:/app/src # This should not be mounted in production
     env_file:
       - .env
     networks:
